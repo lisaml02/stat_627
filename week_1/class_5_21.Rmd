@@ -1,0 +1,93 @@
+---
+title: "class_5_21"
+author: "lisa liubovich"
+date: "2024-05-21"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Overview of SML Notes
+
+1.  Overview of Machine Learning (ML)
+    1.  Machine Learning: program, evaluate, tune
+        1.  we are talking about a collection of statistical methods
+        2.  has the following 3 features
+            1.  can be programmed –\> need to be able to describe the algorithm
+            2.  can be evaluated –\> methods should have some results we can use to figure out if the method is appropriate or not
+            3.  methods need to be tuned –\> there are embedded parameters within the methods that we can control in order to tune the method; ideally can be tuned automatically (involves the previous 2 features)
+                1.  also referred to as the process of optimizing our model
+        3.  methods that satisfy these 3 features are called statistical machine learning
+    2.  General goals: inference and prediction –\> slightly diff focus
+        1.  inference: focus more on constructing CIs, conducting hypotheses tests, etc. –\> goal is to understand and interpret possible associations
+        2.  prediction (one may argue that this is a special case of inference): focus is more about predicting the outcome like $\hat(Y)$ –\> this is the focus of our class
+    3.  Artificial Intelligence and Machine Learning.
+        1.  often used interchangeably by most literature, but SML is a subset of AI
+        2.  deep learning/neural networks are a subset of AI too, but has some overlap with SML
+        3.  natural language processing and large language models are also a subset of AI
+        4.  so is robotics, computer vision, etc.
+        5.  SML is very important in AI –\> may be the foundation of several other subsets of AI like computer vision or deep learning
+    4.  Ethics
+        1.  become more and more well established as a concern about the applications of AI
+        2.  when we conduct analysis, whatever we report may have social impact/consequences as a result of bias
+        3.  take ethical considerations into account before you even form a research question
+        4.  there are ethical considerations when you collect data –\> data may not be representative of target population; this is more likely the cause of bias in a model rather than something inherent to the model itself
+        5.  results: bias can mean very different things in the realm of statistics vs in social domain
+            1.  statistical bias: is the expected value of the estimate = the true value? if the answer is yes, we have unbiased results and if the answer is no, then we have biased results
+            2.  historical/social; same thing can be said about the word "fair" –\> there is isn't really a single set definition
+2.   Types of ML models
+    1.  Supervised ML: Regression vs Classification
+        1.  supervised models refer to models that have a clear outcome/response (Y) variable –\> ex. linear regression, logistic regression, classification and regression tree (CART), other Tree models, K nearest neighbors (KNN)
+        2.  fall into 2 major categories:
+            1.  regression (outcome variable is quantitative/numeric): ex. linear regression, splines
+            2.  classification (outcome variable is qualitative/categorical): ex. logistic regression, Tree methods, linear discriminant analysis (LDA), quadratic discriminant analysis (QDA)
+        3.  KNN can actually be used for both (more on this next week)
+        4.  there are some methods that fall into both supervised and unsupervised categories
+    2.  Unsupervised ML
+        1.  unsupervised: no clear outcome/response (Y) -\> ex. principle component analysis (PCA), cluster analysis
+        2.  PCA + linear or logistic regression is an option too
+    3.  Parametric vs Non-parametric
+        1.  Parametric models usually 2 of the following features
+            1.  the model itself involves some clear functional form with several parameters –\> ex. E(Y)= $\beta_0$ + $\beta_1$ $X_1$ + $\beta_2$ $X_2$ + ... + $\beta_p$ $X_p$
+            2.  involves some assumption on the distribution of the response –\>ex. Y \~ N ( $\beta_0$ + $\beta_1$ $X_1$ + $\beta_2$ $X_2$ + ... + $\beta_p$ $X_p$, $\sigma^2$ )
+        2.  Non-parametric:
+            1.  CART, other tree methods, and splines are an example
+            2.  does not have the features of a parametric model
+        3.  there is overlap –\> ex. Cox proportional hazard model is considered semi-parametric in bio-stats/survival statistics
+    4.  Flexible vs inflexible (aka. restrictive)
+        1.  flexible models: more complex, using more parameters and more df
+        2.  inflexible/restrictive: more simple, using less parameters, less df
+        3.  generally speaking, this is a comparative feature –\> flexibility model has a big impact on the performance of the model
+            1.  when a model is more flexible, it will provide better fit –\> allows the model to chase the individual observations better
+3.   Assessing Accuracy
+    1.  MSE and the bias-variance trade off
+        1.  mean squared error (MSE) for numerical response –\> most commonly used criteria –\> E( $\hat(Y)$ - Y)^2^ which can be decomposed into three parts
+            1.  the variance of $\hat(Y)$
+            2.  bias squared or [E( $\hat(Y)$ - Y}^2^ –\> we have methods to reduce this
+            3.  variance of Y –\> we don't really have control over this
+        2.  variance-bias trade off: if we let a little bit of bias exist, we can reduce the variance in a way that reduces the overall MSE, which is our goal
+            1.  flexible models tend to have smaller bias but larger variance
+            2.  inflexible/restrictive models tend to have larger bias but smaller variance
+            3.  the variance-bias trade off is important to consider when choosing more flexible or less flexible models
+        3.  classification rate/error rate for categorical Y the number of cases where the predicted value = the actual value divided by the sample size n
+            1.  error rate is also called the mis-classification rate = 1 - classification rate
+    2.  Training data and test (validation) data
+        1.  we want the MSE to be small on the training data as well as the testing data –\> the former is easier because we can just make the model more flexible, the latter part is more important for prediction on new observations
+        2.  training data: what we use to "build"/estimate the model
+        3.  testing data: used to test whether the previously built model is indeed good or not –\> these observations were set aside and not used in building our model
+        4.  cross validation: the training data itself will be set aside for validation purposes but it'll also be part of the model building process
+        5.  something that has good fit on the training data may not necessarily fit the testing data well, especially if we run into overfitting
+            1.  when a correct model is used, the training MSE is expected to be relatively small as well as the testing MSE –\> usually training MSE is close to testing MSE OR testing MSE is just a little bit higher than training MSE
+            2.  if the model is underfit (model is not flexible enough; we are using fewer parameters than needed): training MSE is relatively large as well as the testing MSE –\> small variation between the two MSEs is acceptable by nature of randomness
+            3.  if the model is overfit (model is too flexible; we are using too many parameters than needed): training MSE is small while testing MSE is large
+    3.  Other measures
+        1.  AIC
+        2.  BIC/SBC
+        3.  log-likelihood
+        4.  Mallow's Cp
+        5.  PRESS –\> case of leave-one-out cross validation
+4.  Examples
+    1.  Africa Elephant Study
+    2.  Application in R: see SLMOverview_RIntro
