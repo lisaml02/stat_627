@@ -1,0 +1,466 @@
+---
+title: "class_5_38"
+author: "lisa liubovich"
+date: "2024-05-28"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Class Notes
+
+Classification is when the response variable is cateegorical –\> class or category (1, 2, ... , j) that may or may not have order. For now, we are focusing on non-ordered categories (nominal categories)
+
+1.  Classification rate and classification error rate
+    1.  classification and classification errors (mis-classification)
+        1.  classification: predict y where $\hat{y}$ = ?
+            1.  classification rate: when the classification is correct $\rightarrow$ number of correct $\hat{y}$ / total number of observations; $\hat{y}$ = y OR 1 - mis-classification rate
+            2.  mis-classification rate: number of $\hat{y}$ $\neq$ y / total number of observations OR 1 - classification rate
+    2.  Binary response (ie., two-class) classification:
+        1.  Y = 0 or 1 OR failure or success OR negative or positive $\rightarrow$ depends on the context of the problem
+            1.  Confusion Matrix (aka Classification Matrix): TPR (Sensitivity), TNR (Specificity), FPR (1-Sensitivity), FPR (1- Specificity)
+                1.  two main kinds of mis-classification: False Positive or False Negative
+
+                2.  different texts may switch the arrangements of rows and columns
+
+                3.  Confusion matrix for binary response:
+
+                    | Observed "True    | Predicted Negative ( $\hat{y}$ = 0)                                      | Predicted Positive ( $\hat{y}$ = 1) |
+                    |------------------------|------------------------|------------------------|
+                    | negative (y = 0)  | True Negative (count of observations with correct $\hat{y}$ = 0 ) aka TN | False Positive (FP)                 |
+                    | positive (y = 1)  | False Negative (FN)                                                      | True Positive aka (TP)              |
+
+                4.  Rates:
+
+                    1.  True Positive Rate (TPR)/ sensitivity= TP/FN + TP
+                    2.  False Negative Rate (FNR) / 1 - sensitivity = FN/FN + TP
+                    3.  True Negative Rate (TNR) / specificity = TN/TN +FP
+                    4.  False Positive Rate (FPR) / 1 - specificity = FP/TN + FP
+
+                5.  confusion matrix can be used for instances of multiple categories, but we no longer use the term true/false negative/positive
+
+                6.  depending on the tuning value, you will have different classification matrices in logistic regression $\rightarrow$ under each confusion matrix, there is sensitivity and specificity
+            2.  ROC curve and the area under the curve (more in logistic regression)
+                1.  receiver operating characteristic (ROC) curve is the combination of sensitivity and specificity
+2.  K-nearest neighbors (KNN) classifier $\rightarrow$ most intuitive classification method; also applies to regression analysis
+    1.  Distance and neighbors
+        1.  Example: K nearest neighbor(s) = smallest distance
+
+            | observations                                                            | 1                                      | 2                                      | n   |
+            |-------------------------------------------------------------------------|----------------------------------------|----------------------------------------|-----|
+            | X1                                                                      | 8                                      | 7                                      | ... |
+            | X2                                                                      | 12                                     | 10                                     | ... |
+            | Y                                                                       | 0                                      | 0                                      |     |
+            | neighbor (defined by Euclidean distance); distance to (x1, x2) = (6,11) | $\sqrt(6-8)^2 + (11-12)^2$ = $\sqrt5$  | $\sqrt(6-7)^2 + (11-10)^2$ = $\sqrt5$  |     |
+
+        2.  ties can be broken by flipping a coin or other random methods
+
+        3.  once we find the k nearest neighbor, classify $\hat{y}$ using the y's of the K-nearest neighbors by popular vote
+    2.  Flexibility of KNN: tuning K using prediction error rate (or correct classification rate)
+        1.  choosing the k $\rightarrow$ k is tuning parameter
+        2.  k = 1 is used often $\rightarrow$ in practice people use odd numbers for k to avoid ties
+        3.  largest possible k is sample size n
+        4.  flexibility $\rightarrow$ k = 1 is when model is most flexible and k = n is when model is least flexible
+        5.  if we are looking at training accuracy, the most flexible model will give us the highest accuracy and the least flexible model gives us the least accuracy $\rightarrow$ what we really care about is testing accuracy
+        6.  if the model is most flexible, the accuracy will be low and if the model is least flexible (overfit), the accuracy will be also be low (underfit) $\rightarrow$ the ideal level of k will fall somewhere in the model and provide the highest accuracy
+3.  Logistic regression $\rightarrow$ called a regression because depending on what measurement is called the repose, it can indeed have a numerical variable
+    1.  Logistic regression model (inflexible, parametric)
+        1.  Y = 0, 1 (binary) but it can be generalized into multiple categories
+            1.  0 can be referred to as negative or failure
+            2.  1 can be referred to as positive or success
+        2.  Pr(success) = P(Y =1) = $\pi$ $\rightarrow$ Pr(failure) = P(Y = 0) = 1 - $\pi$
+        3.  log(odds) = log( $\pi$ / 1 - $\pi$ ) = $\beta_0$ + $\beta_1$ $X_{1}$ + $\beta_2$ $X_{2}$
+    2.  Estimate the regression coefficients
+        1.  Maximum Likelihood Estimation Method: find the estimates $\hat\beta_{i}$ such that the likelihood function is L( $\hat\beta_0$ , $\hat\beta_1$ , $\hat\beta_2$ ) = ( $\hat\pi_1$ )\^$y_1$ (1 - $\hat\pi_1$)\^ 1- $y_1$ ( $\hat\pi_2$)\^$y_2$ ( 1 - $\hat\pi_2$)\^ $y_2$ ... ( $\hat\pi_n$ )\^$y_n$ (1 - $\hat\pi_n$)\^1- $y_n$ where $\hat\pi_i$ = e\^( $\beta_0$ + $\beta_1$ $X_{i1}$ + $\beta_2$ $X_{i2}$) / 1 + e\^($\beta_0$ + $\beta_1$ $X_{i1}$ + $\beta_2$ $X_{i2}$ ) $\rightarrow$ goal is to maximize this
+        2.  derivative $\rightarrow$ newton-ramson $\rightarrow$ scoring method
+        3.  important output: maximum iterations reached means the machine gave up
+            1.  if the output is 5 or 10, that means that it can effectively find an estimation using a set number of iterations
+    3.  predict the probability
+        1.  $\hat\pi$ = e\^( $\beta_0$ + $\beta_1$ $X_{1}$ + $\beta_2$ $X_{2}$) / 1 + e\^($\beta_0$ + $\beta_1$ $X_{1}$ + $\beta_2$ $X_{2}$ )
+    4.  predict the class i.e. classification
+        1.  $\hat{Y}$ = 0, 1 $\rightarrow$ pick which value has higher probability
+        2.  and that is equivalent to setting a threshold of $\hat\pi$ $\le$ 0.5 or $\hat\pi$ $\ge$ 0.5
+    5.  Tune the cutoff value using ROC (and Loss function)
+        1.  can tune c to maximize the classification rate/minimize mis-classification rate
+        2.  this is where ROC comes to play
+            1.  consider a bunch of choices for the cutoff value c: use the cutoff value to determine specificity and sensitivity
+
+                | c    | specificity | sensitivity |
+                |------|-------------|-------------|
+                | 0    |             |             |
+                | 0.01 |             |             |
+                | 0.02 |             |             |
+                | ...  |             |             |
+                | 0.99 |             |             |
+                | 1.0  |             |             |
+        3.  instead of a table, we represent this with a plot where sensitivity (TPR) is the vertical axis and the 1 - specificity (FPR) is on the horizontal axis $\rightarrow$ see classification document for visualization
+        4.  ROC is guaranteed to be bounded between 0 and 1 and is smooth in theory but wobbly in practice
+        5.  ROC helps with:
+            1.  picking the optimal c value
+            2.  the area under the curve (AUC): we want models with large AUC $\rightarrow$ very important to distinguish between training and testing here
+                1.  for the training AUC, it is not guaranteed but expected to keep increasing as model complexity increases
+                2.  testing AUC is what really matters
+
+# R Examples
+
+# **1 KNN and introduction to classfication rate, confusion matrix, etc.**
+
+-   KNN is a nonparametric, discriminative, supervised learning algorithm for classification.
+
+## **1.1 Prepare the data set: Fuel Economy (`Auto` in `ISLR2` Package)**
+
+Consider the `Auto` data set in the `ISLR2` package. This data frame has 392 observations on the following 9 variables.
+
+-   `mpg`: miles per gallon
+
+-   `cylinders`: Number of cylinders between 4 and 8
+
+-   `displacement`: Engine displacement (cu. inches)
+
+-   `horsepower`: Engine horsepower
+
+-   `weight`: Vehicle weight (lbs.)
+
+-   `acceleration`: Time to accelerate from 0 to 60 mph (sec.)
+
+-   `year`: Model year (modulo 100)
+
+-   `origin`: Origin of car (1. American, 2. European, 3. Japanese)
+
+-   `name`: Vehicle name
+
+We will create a new categorical variable `econ` (fuel economy) based on `mpg` by the quarantines.
+
+```{r}
+library(ISLR2)
+
+auto.data <- ISLR2::Auto
+summary(auto.data$mpg)
+```
+
+```{r}
+auto.data$econ <- cut(auto.data$mpg, breaks=quantile(auto.data$mpg), include.lowest=TRUE,
+                      labels=c("Poor", "OK", "Good", "Excellent"))
+pairs(auto.data[, 2:7], col=auto.data$econ)
+```
+
+We will also split the data set at 60%-40% for training and validation (or testing).
+
+```{r}
+set.seed(12345)  # Only for example purpose.
+training_pct <- 0.6
+Z <- sample(nrow(auto.data), floor(training_pct*nrow(auto.data)))
+auto.training <- auto.data[Z, ]
+auto.testing <- auto.data[-Z, ]
+c(nrow(auto.data), nrow(auto.training), nrow(auto.testing))
+```
+
+## **1.2 R function `knn()`**
+
+```{r}
+# install.packages("class")
+library(class)
+```
+
+This function requires at least 4 input arguments:
+
+-   train: Xs (i.e., predictors) in the training set.
+
+-   test: Xs (i.e., predictors) in the testing set.
+
+-   cl: Observed classification (i.e., response) in the training set.
+
+-   k: number of neighbors.
+
+The output of the function is the predicted classification of the testing set.
+
+## **1.3 Fit KNN model to the fuel economy data.**
+
+Recall that column 2 - 7 are the predictors.
+
+```{r}
+colnames(auto.training)[2:7]
+```
+
+```{r}
+X.train <- auto.training[, 2:7]
+Y.train <- auto.training$econ
+
+X.test <- auto.testing[, 2:7]
+Y.test <- auto.testing$econ
+
+econ.knn <- knn(train=X.train, test=X.test, cl=Y.train, k = 3)
+
+table(Y.test, econ.knn)  # Confusion matrix on the testing data set.
+```
+
+```{r}
+mean(Y.test == econ.knn) # correct classification rate on the testing data.
+```
+
+## **1.4 Tuning K to maximize correct classification rate.**
+
+```{r}
+Kmax <- 25  # Set the largest K I would consider for this study.
+class.rate <- rep(0, Kmax)
+for (i in 1:Kmax) {
+  knn.out <- knn(train=X.train, test=X.test, cl=Y.train, k = i)
+  class.rate[i] <- mean(Y.test == knn.out)
+}
+
+plot(c(1:Kmax), class.rate, xlab="K", ylab="Correct classification rate")
+```
+
+```{r}
+k.opt <- which.max(class.rate)
+c(k.opt, class.rate[which.max(class.rate)])  # Optimal K.
+```
+
+```{r}
+econ.knnOpt <- knn(train=X.train, test=X.test, cl=Y.train, k = k.opt)
+table(Y.test, econ.knnOpt)  # Confusion matrix on the testing data set.
+```
+
+```{r}
+mean(Y.test == econ.knnOpt) # correct classification rate on the testing data.
+```
+
+**Remark**
+
+-   Note that, in this example, the classification rate is above 0.6 for K=1,2,...,25𝐾=1,2,...,25, and the change is relatively small. If you change the random seed, or change the training percentage, you may get a very different K.
+
+-   Instead of splitting the data set once, a better approach is conduct *cross-validation*. We’ll discuss it next week.
+
+# **2 Logistic regression**
+
+-   Logistic regression is a parametric, discriminative, supervised learning algorithm for classification and inference.
+
+## **2.1 The Depression data (read data from a file)**
+
+A study a 3,189 high school students has been concluded in order to find socioeconomic and family factors that my be associated with stress and depression. Data Set **depression.csv** contains some variables obtained from this study.
+
+-   `ID`: Participant’s identification number
+
+-   `Gender`: Female or Male
+
+-   `Guardian_status`: 0 = does not live with both natural parents. 1 = with both parents.
+
+-   `Cohesion_score`: 16-80, large value indicates strong connection to the community.
+
+-   `Depression_score`: 0 - 60
+
+-   `Diagnosis`: Clinic diagnosis of major depression. 0 = negative (no), 1 = positive (yes)
+
+```{r}
+depr <- read.csv("./depression_data.csv", header=T)
+summary(depr)
+```
+
+```{r}
+# Remove missing values in Diagnosis
+depr <- na.omit(depr)
+
+# Since we'll use logistic regression for this data set. Convert the response as 0-1 or a factor.
+depr$Diagnosis <- 1*(depr$Diagnosis == 1)
+head(depr)
+```
+
+```{r}
+# Split data (optional in real life)
+set.seed(23456)  # Only for example purpose.
+training_pct <- 0.6
+Z <- sample(nrow(depr), floor(training_pct*nrow(depr)))
+depr.training <- depr[Z, ]
+depr.testing <- depr[-Z, ]
+```
+
+For now, we’ll only consider logistic regression for binary (0-1, yes-no, success-failure, etc) response.
+
+```{r}
+head(depr)
+```
+
+## **2.2 `glm()` function and its output**
+
+```{r}
+depr.glm <- glm(Diagnosis ~ Gender + Guardian_status + Cohesion_score, family = binomial, data=depr.training)
+summary(depr.glm)
+```
+
+```{r}
+depr.glm$fitted.value[1:5]
+```
+
+## **2.3 Predict the probability and the log(odds)**
+
+Predict the probability using `predict()` function with argument `type="response"`.
+
+```{r}
+p1 <- predict(depr.glm, newdata=data.frame(Gender="Female", Guardian_status=0, Cohesion_score=50),
+        type = "response")
+p1
+```
+
+```{r}
+odds1 <- p1/(1-p1)  # probability -> odds.
+
+p2 <- predict(depr.glm, newdata=data.frame(Gender="Female", Guardian_status=1, Cohesion_score=50),
+        type = "response")
+odds2 <- p2/(1-p2)
+
+cbind(p1, odds1, p2, odds2)
+```
+
+Predicting log-odds (i.e., the linear function) is not used often. The example is to show how to compute the probability from log-odds.
+
+```{r}
+logOdds1 <- predict(depr.glm, newdata=data.frame(Gender="Female", Guardian_status=0, Cohesion_score=50),
+        type = "link")
+exp(logOdds1)/(1+exp(logOdds1))  # log-odds -> probability
+```
+
+## **2.4 Predict the class. Confusion matrix, classfication rate, TPR, TNR, and error rate.**
+
+```{r}
+cutoff <- 0.4  # Try cutoff <-0.5 and see what happens.
+predicted.class <- 1*(depr.glm$fitted.values > cutoff)
+
+# Confusion matrix
+table(depr.training$Diagnosis, predicted.class)
+```
+
+```{r}
+# Correct classification rate
+mean(depr.training$Diagnosis == predicted.class)
+```
+
+```{r}
+# Error rate
+1 - mean(depr.training$Diagnosis == predicted.class)
+```
+
+```{r}
+# TPR, FNR, TNR and FPR
+prop.table(table(depr.training$Diagnosis, predicted.class), 1)
+```
+
+Note that:
+
+-   Although the training error rate is 19% (i.e., classification rate 81%), the False Negative rate, P(Yˆ=0|Y=1)𝑃(𝑌^=0|𝑌=1), is very high (95.6%).
+
+-   If we increase the cutoff value, we’ll have even higher FNR. (Why?)
+
+-   Checking the prediction error within the training set can be misleading. We will use the testing data set soon.
+
+## **2.5 ROC curve and cutoff tuning**
+
+Here is a function that can draw ROC.
+
+-   The function optimal cut-off that maximizes sensitivity+specificity𝑠𝑒𝑛𝑠𝑖𝑡𝑖𝑣𝑖𝑡𝑦+𝑠𝑝𝑒𝑐𝑖𝑓𝑖𝑐𝑖𝑡𝑦. I.e, it maximized TPR+TNR𝑇𝑃𝑅+𝑇𝑁𝑅, or TPR+(1−FPR)𝑇𝑃𝑅+(1−𝐹𝑃𝑅),
+
+-   **Be sure to convert the response variable to 0-1 and call it `y` in the data frame.**
+
+```{r}
+roc.analysis <-function (object, newdata = NULL, newplot=TRUE) 
+{
+  if (is.null(newdata)) {
+    pi.tp <- object$fitted[object$y == 1]
+    pi.tn <- object$fitted[object$y == 0]
+  }
+  else {
+    pi.tp <- predict(object, newdata, type = "response")[newdata$y == 1]
+    pi.tn <- predict(object, newdata, type = "response")[newdata$y == 0]
+  }
+
+  pi.all <- sort(c(pi.tp, pi.tn))
+  sens <- rep(1, length(pi.all)+1)
+  specc <- rep(1, length(pi.all)+1)
+  for (i in 1:length(pi.all)) {
+    sens[i+1] <- mean(pi.tp >= pi.all[i], na.rm = T)
+    specc[i+1] <- mean(pi.tn >= pi.all[i], na.rm = T)
+  } 
+
+  npoints <- length(sens)
+  area <- sum(0.5 * (sens[-1] + sens[-npoints]) * (specc[-npoints] - 
+        specc[-1]))
+  
+  lift <- (sens - specc)[-1]
+  cutoff <- pi.all[lift == max(lift)][1]
+  sensopt <- sens[-1][lift == max(lift)][1]
+  specopt <- 1 - specc[-1][lift == max(lift)][1]
+
+  par(pty="s")
+  if (newplot){
+  plot(specc, sens, xlim = c(0, 1), ylim = c(0, 1), type = "s", 
+            xlab = "FPR = 1-specificity", ylab = "TPR = sensitivity", main="ROC")
+  abline(0, 1)
+  }
+  else lines(specc, sens, type="s", lty=2, col=2)
+
+  list(pihat=as.vector(pi.all), sens=as.vector(sens[-1]), 
+  spec=as.vector(1-specc[-1]), area = area, cutoff = cutoff,
+  sensopt = sensopt, specopt = specopt)
+}
+```
+
+Draw ROC curves for both training and testing data sets.
+
+```{r}
+train.ROC <- roc.analysis(depr.glm)
+
+depr.testing$y <- 1*(depr.testing$Diagnosis == 1) 
+test.ROC <- roc.analysis(depr.glm, newdata=depr.testing, newplot=F)
+```
+
+Find the optimal *cutoff from the training* data set. Then apply it to the *testing data to compute the prediction error rate*.
+
+```{r}
+train.ROC[(4:7)]
+```
+
+```{r}
+cutoff <- train.ROC$cutoff
+pred.prob <- predict(depr.glm, newdata=depr.testing, type="response")
+predicted.class <- 1*(pred.prob > cutoff)
+
+# Confusion matrix
+table(depr.testing$Diagnosis, predicted.class)
+```
+
+```{r}
+# Correct classification rate
+mean(depr.testing$Diagnosis == predicted.class)
+```
+
+```{r}
+# Error rate
+1 - mean(depr.testing$Diagnosis == predicted.class)
+```
+
+## **2.6 Extra: logistic regression for Binomial counts data**
+
+Sometimes, data may be aggregated according to unique X-combination. I.e., Each row is a summary of ni𝑛𝑖 observations that have the same X-values. The response variable(s) are the **counts** of successes (1) and failures (0). The logistic regression model can still be applied. However, note that:
+
+-   The R syntax need to be modified. One way is to use `glm(c(count.of.success, count.of.failures) ~ x1 + x2 ......)`
+
+-   We can still study the association, and predict the probabilities.
+
+-   We will NOT predict individual’s classification.
+
+Here is an example using `menarche` data in `MASS` package.
+
+```{r}
+library(MASS)
+data(menarche)
+
+summary(menarche)
+
+```
+
+```{r}
+## fit the logistic regression model
+logit.fit <- glm(cbind(Menarche,Total-Menarche)~Age, family=binomial(link=logit),data=menarche)
+summary(logit.fit)
+```
