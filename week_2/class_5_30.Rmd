@@ -1,0 +1,240 @@
+---
+title: "class_5_30"
+author: "lisa liubovich"
+date: "2024-05-30"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Class Notes
+
+1.  Loss function, risk function, and Bayes classifier
+    1.  Loss function and risk function
+        1.  Loss function: loss (or cost) of mis-classification $\rightarrow$ in general, it is the loss for any classification, where 0 is correct classification and 1 is mis-classification
+            1.  Loss( $\hat{Y}$ = k \| Y = j): loss when classifying an observed response in class j as class k
+            2.  0-1 loss: loss = 0 if the predicted class = the observed class; loss = 1 for any mis-classification (not binary, it means that any mis-classification is equally bad)
+            3.  Under the 0-1 loss, minimizing Risk( $\hat{Y}$ = k) is mathematically equivalent to considering the largest Pr(Y = k) $\rightarrow$ this probability is unknown so we have to estimate $\hat{Pr(Y = k)}$
+                1.  in logistic regression, this is estimating $\hat{Y}$ = 0 or 1, where 0 is associated with $\hat\pi$ $\le$ 0.5, $\hat\pi$ $\ge$ 0.5
+            4.  if the loss(FP) = m \* loss(FN) $\rightarrow$ this is different from 0-1 loss
+                1.  when m is between 0 and 1, FN is a bigger loss
+                2.  in this case, you would want to assign more observations to 1 because it costs more to do a false negative than a false positive
+                3.  if one type of mis-classification has higher loss/cost, we want to be a bit more restrictive to make a prediction for a particular class
+            5.  if the loss is different for different classifications, we can change the cutoff so that we can minimize risk $\rightarrow$ instead of the 0.5 cutoff, $\hat{Y}$ = 0 or 1, where 0 is associated with $\hat\pi$ $\le$ m/1+m, $\hat\pi$ \> m/1+m (either one can have greater than or equal, it doesn't really make a difference since its just to account for if the $\hat\pi$ is exactly = to the cut off)
+            6.  in practice, the loss function should be developed at the beginning of the study based on the research needs $\rightarrow$ not halfway through the analysis
+        2.  Risk function: associated with a predicted class
+            1.  predict Y as class = $\sum$ k, l =1 loss( $\hat{Y}$ = k \| Y = l) \* P(Y = l)
+                1.  = loss( $\hat{Y}$ = k\| Y = 1) \* $\pi$(Y = 1) + loss( $\hat{Y}$ = k \| Y = 2) \* $\pi$(Y = 2) + loss( $\hat{Y}$ = k\| Y = 3) \* $\pi$(Y = 3)
+            2.  AKA Risk( $\hat{Y}$ = k): risk associated with classifying Y as class k
+            3.  risk function itself is called expected loss (expected value of loss function)
+            4.  predict/classify y as class k when risk( $\hat{Y}$ = k) of making such a prediction is minimized $\rightarrow$ can't exist without any risk at all, so we just minimize it
+            5.  you want to make a classification based on which prediction will give you the smallest risk
+    2.  Bayes theorem and Bayes classifier: prior and posterior
+        1.  Bayes classifier treats the predictors X as random variables $\rightarrow$ not the case in KNN and logistic regression, neither of which are Bayes classifiers since they treat predictors X as fixed values
+        2.  Prior probability: before we even make a prediction, do we have a probability for a certain outcome?
+            1.  uniform prior: all probabilities for different classes are equal $\rightarrow$ prior becomes a constant
+            2.  what proportion of outcomes in each class? and then use those sample proportions as the prior $\rightarrow$ what functions like `lda()` or `qda()` do automatically
+            3.  ex. P(Y = 2 \| X = $x_0$) = (prior probability(y = 2) \* $f_2$( $x_0$))/(prior probability(y=1) \* $f_1$( $x_0$) + prior probability (y= 2) \* $f_2$( $x_0$) + prior probability (y= 3) \* $f_3$( $x_0$)) $\rightarrow$ finding the greatest probability is just finding the largest numerator since the denominators will always be the same
+        3.  For all observations in class 1, they have a distribution function $f_1$(x); for all observations in class 2, they have a distribution function $f_2$(x); for all observations in class 3, they have a distribution function $f_3$(x) $\rightarrow$ in practice, we don't know the real distribution function so we estimate each distribution function using the observations from each respective class
+    3.  0-1 loss function in Bayes classifier
+        1.  P(Y = k\|X = $x_0$)
+            1.  under 0-1 loss: minimizing the Risk( $\hat{Y}$ = k) is equivalent to finding the largest P(Y = k\|X = $x_0$)
+            2.  for example: P(Y =1 \| X = $x_0$), P(Y =2 \| X = $x_0$), P(Y =3 \| X = $x_0$) $\rightarrow$ the probability that is the largest is the classification which we choose
+2.  LDA and QDA $\rightarrow$ same method, just different model assumptions
+    1.  assumptions of LDA and QDA
+        1.  recall that Bayesian classifiers treat the predictors X as random $\rightarrow$ for LDA and QDA, we assume that the predictors X follow the normal distribution where the mean depends on what class we're looking at and the variance depends on what class we are looking at
+        2.  ex. to find $f_1$(x), we estimate $\mu_1$ and $\sigma_1^2$ using all observations with Y = 1, for $f_2$(x) we estimate $\mu_2$ and $\sigma_2^2$ using all observations with Y = 2, and for $f_3$(x) we estimate $\mu_3$ and $\sigma_3^2$ using all observations with Y = 3
+        3.  LDA and QDA are just a type of Bayes classifier, so we can use Bayes classifier to find the largest probability OR the smallest Risk( $\hat{Y}$ = k) OR largest prior probability of (Y=k\|X =x) \* $f_k$($x_0$)
+            1.  Assuming a 0-1 loss function is used, minimizing risk is the same thing as trying to find the largest probability in the Bayesian classifier
+            2.  Assuming X \~ Normal( $\mu_k$, $\sigma_k^2$), this is also the same thing as evaluating quadratic function(s) on X $\rightarrow$ this function depends on $x_0$ , $\mu_k$ , and $\sigma_k^2$
+            3.  if we impose additional assumptions we can simplify the work $\rightarrow$ if the variances are the same, then those quadratic functions are the same thing as evaluating linear function(s) on X where we predict ( $x_0$ , $\mu_k$)
+        4.  again, we are trying to make a classification that has the smallest associated risk
+        5.  LDA is a special case of QDA which is a special case of Bayes classification
+    2.  discriminant function (brief, visual). Special case: p = 1 with uniform prior and 0-1 loss
+        1.  probability density function (PDF) $\rightarrow$ the area under the curve in this specific scenario is always equal to 1 unless the prior for certain classes is higher/lower
+        2.  classification is done based on the highest elevation on the curve while priors scale things to reflect if classes have higher/lower priors
+    3.  Tune predictors and orders, priors. Loss function?
+3.  Summary and comparison of KNN, Logistic Regression, LDA, and QDA
+    1.  Advantages
+    2.  Restrictions
+
+# R Notes
+
+# **3 LDA and QDA (Generative Models)**
+
+generative models refer to models where in the process of making predictions, we will generate distributions (in this case, normal distributions)
+
+-   LDA and QDA are parametric, generative, supervised learning algorithm for classification.
+
+## **3.1 Recall the fuel economy data from Example 1.**
+
+For now, I’ll only use 2-predictors: `acceleration` and `year`. This will make it easier to plot the data.
+
+```{r}
+auto.data <- ISLR2::Auto
+auto.data$econ <- cut(auto.data$mpg, breaks=quantile(auto.data$mpg), include.lowest=TRUE,
+                      labels=c("Poor", "OK", "Good", "Excellent"))
+pairs(auto.data[, 2:7], col=auto.data$econ)
+set.seed(12345)  # Only for example purpose.
+training_pct <- 0.6
+Z <- sample(nrow(auto.data), floor(training_pct*nrow(auto.data)))
+auto.training <- auto.data[Z, ]
+auto.testing <- auto.data[-Z, ]
+c(nrow(auto.data), nrow(auto.training), nrow(auto.testing))
+colnames(auto.data)
+```
+
+```{r}
+c(nrow(auto.data), nrow(auto.training), nrow(auto.testing))
+```
+
+```{r}
+plot(auto.data$year, auto.data$acceleration, col=auto.data$econ, pch=20) # color coding is based on the categories of mpg
+```
+
+## **3.2 The `lda()` functions from `MASS` package**
+
+In practice, we often include `CV=TRUE` inside the the `lda()` function. See the last section for more details.
+
+```{r}
+library(MASS)
+lda.train <- lda(econ ~ acceleration + year, data=auto.training) #similar to lm()
+lda.train
+
+# black dots on the graph will be used to estimate mean acceleration and year for poor mpg, red used to estimate mean of acceleration and year for okay mpg
+
+# because we have two predictors, we have pairs of means (one for each predictor) --> technically these means are in a vector
+
+# coefficients of linear functions are in the coeffs of linear discriminants --> we are evaluating two functions that can either give outcomes of 0 or 1, so we have four possible outcomes: (0,0), (0,1), (1,0), (1,1)
+
+# basically evaluating LD1 > 0? T or F, LD2 > 0? T or F, and considering LD1 and LD2: (T,T), (T,F), (F,T), (F,F)
+```
+
+Demonstrate the “linear” boundary. $\rightarrow$ see how the points are neatly separated by straight lines? boundaries between classes are flat surfaces as a result of LDA
+
+```{r}
+par(mfrow=c(1, 2))
+plot(auto.training$year, auto.training$acceleration, col=auto.training$econ, pch=20,
+     main="Training. Observed.")
+pred.train <- predict(lda.train)$class # same use as in linear regression
+plot(auto.training$year, auto.training$acceleration, col=pred.train , pch=20,
+     main="Training. Predicted.")
+
+```
+
+```{r}
+par(mfrow=c(1, 2))
+plot(auto.testing$year, auto.testing$acceleration, col=auto.testing$econ, pch=20,
+     main="Testing. Observed.")
+pred.test <- predict(lda.train, newdata=auto.testing)$class # because we are interested in the predicted classes
+plot(auto.testing$year, auto.testing$acceleration, col=pred.test, pch=20,
+     main="Testing. Predicted.")
+
+# boundaries are the same as the training.predicted, the dots themselves are different meaning the acceleration and year combo has changed; the boundaries are determined by linear functions/combinations of the predictors
+```
+
+Prediction classification rate and prediction error rate (on the testing data)
+
+```{r}
+pred.test <- predict(lda.train, newdata=auto.testing)$class
+mean(pred.test == auto.testing$econ)  # correct classification rate
+
+```
+
+```{r}
+1- mean(pred.test == auto.testing$econ) # error rate
+```
+
+## **3.3 The `qda()` functions from `MASS` package.**
+
+In practice, we often include `CV=TRUE` inside the the `qda()` function. See the last section for more details.
+
+Mostly the same as LDA, but we also have to estimate the variances and the output doesn't give you the discriminant functions directly which isn't that important anyways
+
+```{r}
+qda.train <- qda(econ ~ acceleration + year, data=auto.training)
+qda.train
+```
+
+```{r}
+par(mfrow=c(1, 2))
+plot(auto.training$year, auto.training$acceleration, col=auto.training$econ, pch=20,
+     main="Training. Observed.")
+pred.train <- predict(qda.train)$class
+plot(auto.training$year, auto.training$acceleration, col=pred.train , pch=20,
+     main="Training. Predicted.")
+
+# boundaries are no longer straight lines, they are quadratic curves AKA curved planes
+```
+
+Prediction classification rate and error rate on the testing data.
+
+```{r}
+pred.test <- predict(qda.train, newdata=auto.testing)$class
+mean(pred.test == auto.testing$econ)   # classification rate
+```
+
+```{r}
+1- mean(pred.test == auto.testing$econ)  # error rate
+```
+
+the results are comparable in the testing classification, so use the LDA
+
+52% error is only bad if you have 2 classes, but we have 4, so 52% is actually not that bad
+
+## **3.4 More about the prior**
+
+By default, `lda()` and `qda()` use the **sample proportion** as the **prior**. We can set a different prior if needed.
+
+-   Use default
+
+```{r}
+qda.train <- qda(econ ~ acceleration + year, data=auto.training)
+pred.test <- predict(qda.train, newdata=auto.testing)$class
+mean(pred.test == auto.testing$econ)   # classification rate
+```
+
+Use Uniform prior (equal prior probability)
+
+prior = (vector of length that is the same as the number of classes) $\rightarrow$ values must add up to 1
+
+```{r}
+J <- nlevels(auto.data$econ)
+qda.train2 <- qda(econ ~ acceleration + year, data=auto.training,
+              prior=rep(1/J, J))
+pred.test <- predict(qda.train2, newdata=auto.testing)$class
+mean(pred.test == auto.testing$econ)   # classification rate
+```
+
+Many other choices, as long as the prior probabilities add up to 1 and covers all response classes.
+
+```{r}
+qda.train3 <- qda(econ ~ acceleration + year, data=auto.training,
+              prior=c(0.4, 0.3, 0.1, 0.2),)
+pred.test <- predict(qda.train3, newdata=auto.testing)$class
+mean(pred.test == auto.testing$econ)   # classification rate
+```
+
+## **3.5 Heads up: cross-validation**
+
+In previous R examples, we split the original data set into training and testing sets. The training data is used to fit the model, including tuning when applicable. Then the *trained* model is applied to the testing data and prediction accuracy measures are computed. The prediction accuracy measurements on the testing data provide a valid way of evaluating the model. Testing data accuracy is a more valid measure of model accuracy.
+
+However, the above result is \`\`random’’: one researcher’s split may be different from another researcher’s split. Hence, the model accuracy assessments may be different even though people are using the same data and the same type of models.
+
+A **Leave-One-Out** cross-validation (LOOCV) algorithm is used in `lda()` and `qda()` with `CV=TRUE`. This allows us to - Use the entire data set without splitting it *manually* - Get a valid assessment on the prediction accuracy.
+
+```{r}
+# Use the whole observed data with CV=TRUE
+qda.cv <- qda(econ ~ acceleration + year, data=auto.data, CV=TRUE)
+qda.cv$class[1:3]
+```
+
+```{r}
+qda.cv$posterior[1:3, ]
+```
+
+```{r}
+mean(qda.cv$class == auto.data$econ)   # classification rate
+```

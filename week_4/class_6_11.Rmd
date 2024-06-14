@@ -1,0 +1,731 @@
+---
+title: "class_6_11"
+author: "lisa liubovich"
+date: "2024-06-11"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+options(repos = c(CRAN = "https://cran.r-project.org"))
+```
+
+# Class Notes
+
+## Review from last week:
+
+The purpose of CV is to find a better estimate of the "Prediction error" (or Prediction accuracy) measure $\rightarrow$ these measures include MSE, SSE(RSS), misclassification rate etc from the Validation (testing data)
+
+Better estimates lead to:
+
+1.  model tuning: find the value of the tuning parameter that will improve model performance
+2.  model comparison: we can use the CV values for model comparison
+
+Jackknife estimator: remember to use both the original $\hat\theta$ and the average across the observations ( $\hat\theta_.$ ) to calculate the jackknife estimator $\rightarrow$ they are two different things
+
+When you are calculating bias, you are subtracting something not biased from something biased (in this case, $\hat\theta$ - $\hat\theta_{JK}$ )
+
+## Introduction to Splines
+
+1.  From Polynomial Regression to Piece-wise Polynomial Regression
+    1.  Polynomial regression: order and flexibility. (Review)
+    2.  Piece-wise regression: knots, continuity and smoothness
+2.  B-spline (basis-spline)
+    1.  Basis functions and regression using basis functions
+    2.  Tuning B-spline: knots, order (flexibility and degrees of freedom)
+3.  Natural-spline and Smoothing-spline
+    1.  From cubic B-spline to natural-spline
+    2.  Smoothing-spline: tuning the smoothness/roughness (and knots) 
+4.  Local regression and generalized additive models (brief introduction)
+
+## Collinearity and Shrinkage
+
+ridge and lasso are shrinkage methods $\rightarrow$ shrinkage methods and variable selection are regularization methods
+
+under the shrinkage methods, we have biased $\hat\beta$ but smaller standard error of $\hat\beta$ $\rightarrow$ MSE on $\beta$ is E[ ($\hat\beta$ - $\beta$ )^2^ ], MSE on Y: E[( $\hat{Y}$ - Y)^2^ ]
+
+we don't know if either of those MSEs improve with shrinkage $\rightarrow$ whether or not we get improved prediction performance depends
+
+These methods will be helpful when we have strong collinearity between predictors $\rightarrow$ helps decrease MSE
+
+We would expect a degree of collinearity unless the experiment is very well designed
+
+With ridge regression and LASSO , we're still trying to minimize RSS/SSE, but by using a constraint (see written notes for specifics) $\rightarrow$ apply to scaled/standardized data so that all the $\beta$s are cancelled out and all the X's are in the same units (if you use different units of X, you might end up with very different estimates for the coefficients, and you don't want your coefficients to be influenced by the measurement units of X)
+
+LASSO and ridge are related, the only difference is that ridge is on the squared scale (L2 norm) and the LASSO is on the absolute value scale (L1 norm) $\rightarrow$ regardless we're trying to minimize SSE/RSS, just with constraints
+
+1.  Motivation: Challenges with high dimensional data (review and prerequisite) 
+    1.  Curse of Dimensionality
+    2.  Flexible vs inflexible (Day 1)
+    3.  Collinearity (Regression)
+2.  Remedies for high dimensional, correlated data.
+    1.  Variable selection (prerequisite)
+    2.  Shrinkage methods: Ridge regression and Lasso 
+    3.  Dimension reduction. (next class)
+3.  Variable Selection
+    1.  Selection criteria and how to use them.
+    2.  Stepwise selection and best subset algorithms.
+    3.  Other considerations in variable selection.
+4.  Shrinkage methods
+    1.  Concepts of "shrinkage" and the constrains on the parameters.
+        1.  the concept of regularization in general is decreasing the number of parameters
+    2.  Ridge Regression and Lasso: general idea and similarity. What can they do?
+    3.  Difference between ridge and lasso.
+    4.  Connection to Bayesian method (brief)
+
+# R Notes
+
+## Splines
+
+### **1 The fossil data**
+
+The `fossil.dat` data set in Canvas has data collected by Dr. Timothy Bralower of the Penn State Department of Geosciences. It consists of two variables measured on 106 fossil shells collected from cores drilled in the floor of the ocean: the age of shell dated by the surrounding material and the ratio of the appearance of isotopes of Strontium (in strontium.ratio). It is believed that this ratio is driven by sea level and is related to climate change. A scatter plot of the data is below.
+
+```{r}
+fossil <- read.table("./fossil.dat", header=T)
+sx <- sort(fossil$age, index.return=T) # sorting here makes it easier to plot later
+fossil <- fossil[sx$ix,]
+attach(fossil)
+
+## scatter plot of the data
+plot(age, strontium.ratio, pch=20, xlab="age (in millions of years)")
+```
+
+### **2 Polynomial Regression**
+
+```{r}
+poly.deg1 <- lm(strontium.ratio~age)
+poly.deg2 <- lm(strontium.ratio~age+I(age^2))
+poly.deg3 <- lm(strontium.ratio~age+I(age^2)+I(age^3))
+poly.deg4 <- lm(strontium.ratio~age+I(age^2)+I(age^3)+I(age^4))
+poly.deg5 <- lm(strontium.ratio~age+I(age^2)+I(age^3)+I(age^4)+I(age^5))
+poly.deg6 <- lm(strontium.ratio~age+I(age^2)+I(age^3)+I(age^4)+I(age^5)+
+    I(age^6))
+poly.deg12 <- lm(strontium.ratio~poly(age, 12))
+
+# plots of polynomial fits
+plot(age, strontium.ratio, pch=20,xlab="age (in millions of years)",
+    main="polynomial fits")
+legtxt <- c("linear p=1","quadratic p=2","cubic p=3",
+    "quartic p=4","quintic p=5","degree 6 p=6", "degree 12")
+legend('bottomleft',legtxt, col=1:7,lty=1:7,lwd=2)
+lines(age, poly.deg1$fitted,lwd=2)
+lines(age, poly.deg2$fitted,lty=2,col=2,lwd=2)
+lines(age, poly.deg3$fitted,lty=3,col=3,lwd=2)
+lines(age, poly.deg4$fitted,lty=4,col=4,lwd=2)
+lines(age, poly.deg5$fitted,lty=5,col=5,lwd=2)
+lines(age, poly.deg6$fitted,lty=6,col=6,lwd=2)
+lines(age, poly.deg12$fitted,lty=7,col=7,lwd=2)
+
+# model becomes more flexible as order increases --> when a model is more flexible, it gives better fit on the training data (but we don't want to make it too flexible because that might lead to overfitting)
+```
+
+Recall the `cv.glm()` function in `boot` package.
+
+```{r}
+library(boot)
+cv.err <- rep(0, 15)
+set.seed(2023)
+for (p in 1:15){
+  poly.fit <- glm(strontium.ratio ~ poly(age, p), family="gaussian", data=fossil)
+  cv.err[p] <- cv.glm(poly.fit, data=fossil)$delta[1]
+} # checking performance on testing/validation data
+plot(cv.err, type="b", pch=20)
+
+# when the order of the polynomial increases, the degrees of freedom increases --> cv error goes down dramatically until the 6th order, after which things stay the same, but eventually the cv error will go up again after a while
+# this is the general expected behavior of a model with increasing flexibility
+# anything in the sort of flat area can be the true order, but in practice, people prefer simpler models; before that we run into the risk of underfitting
+```
+
+### **3 Piece-wise Regression and Splines**
+
+Let’s cut the data into 4 segments according to the quarantines of `age`.
+
+```{r}
+age.quan <- quantile(age)
+age.group <- cut(age, breaks = age.quan)
+table(age.group)
+
+# put the data into a few small sections based on x values
+```
+
+```{r}
+plot(age, strontium.ratio, col=age.group, pch=20, 
+     xlab="age (in millions of years)")
+```
+
+Broken lines with linear or quadratic function regression:
+
+```{r}
+# piece-wise regression
+plot(age, strontium.ratio, col=age.group, pch=20, 
+     xlab="age (in millions of years)",
+     main = "Linear fit in each segment")
+abline(v=age.quan[2:4], lty=2)
+for (i in 1:4){
+  broken.lin <- lm(strontium.ratio ~ age, data=fossil, subset = (age.group == levels(age.group)[i]))
+  x <- c(age.quan[i], age.quan[i+1])
+  lines(x, predict(broken.lin, newdata=data.frame(age=x)), col=i, lwd=2)
+}
+
+# the regression pattern becomes discontinuous
+```
+
+```{r}
+plot(age, strontium.ratio, col=age.group, pch=20, 
+        main = "Quardratic fit in each segment")
+abline(v=age.quan[2:4], lty=2)
+for (i in 1:4){
+  broken.lin <- lm(strontium.ratio ~ age + I(age^2), data=fossil, subset = age.group == levels(age.group)[i])
+  x <- seq(age.quan[i], age.quan[i+1], by=0.1)
+  lines(x, predict(broken.lin, newdata=data.frame(age=x)), col=i, lwd=2)
+}
+```
+
+Continuous lines (splines):
+
+```{r}
+# fit so that the line is continuous --> must meet two basic requirements: lines must be connected and SMOOTH
+# look at deriviative from the left side and the first point of the right side --> first derivatives must be equal
+n <- nrow(fossil)
+basis1 <- matrix(NA, ncol=4, nrow=n)
+
+par(mfrow=c(1, 2))
+
+for (i in 1:4){
+basis1[, i] <- ifelse((age > age.quan[i]), yes=age-age.quan[i], no=0)
+}
+colnames(basis1) <- c("b1", "b2", "b3", "b4")
+matplot(age, basis1, type='l', lwd=2, xlab="x", ylab="Linear Splines",
+    main="Basis functions")
+abline(v=age.quan[2:4], lty=2)
+
+pw.lin <- lm(strontium.ratio ~ basis1)
+plot(age, strontium.ratio, pch=20, col=age.group, 
+     xlab="age (in millions of years)",
+     main="Piece-wise linear fit")
+lines(age, pw.lin$fitted, lwd=2)
+rug(age)
+abline(v=age.quan[2:4], lty=2)
+```
+
+### **4 B-spline (basis-spline)**
+
+Y = $\beta_0$ + $\beta_1$ \* $b_1$(x) + $\beta_2$ \* $b_2$(x) + ... + error $\rightarrow$ basis functions are not unique here; there are more than one ways to write a basis function and your coefficients will just change accordingly
+
+the actual response contains the error term, but predictions don't need to include the error term in calculations
+
+The exact form of the B-spline (basis-spline) is derived in a recursive way and may be hard to write out analytically. It can be considered as piece-wise polynomial splines at various degrees.
+
+Functions `bs()` in package `splines` creates the basis function of the B-splines.
+
+-   Argument “`knots =`” defines the knots.
+
+-   Argument “`degree =`” defines the (highest) order of the splines. (Cubic, by default.)
+
+-   After creating the splines, use `lm()` or `glm()` functions to fit the regression model.
+
+```{r}
+install.packages("splines")
+library(splines)
+```
+
+#### **4.1 Linear B-spline (not smooth)**
+
+```{r}
+par(mfrow=c(1, 2))
+
+bsage1 <- bs(age, knots=age.quan[2:4], degree=1) # you need to tell where the knots will be as well as the degree 
+matplot(age, bsage1, type='l', lwd=2, xlab="x", ylab="Basis Function", # these are the basis functions
+    main="Linear B-spline")
+abline(v=age.quan[2:4], lty=2)
+
+bspline.fit1 <- lm(strontium.ratio~bsage1) # running linear regression using the basis functions as predictors
+bspline.fit1$coefficients # we aren't particularly interested in coefficients in practice; we are more interested in the plot itself
+```
+
+```{r}
+plot(age,strontium.ratio,pch=20,xlab="age (in millions of years)",
+    main="Linear B-spline fit", col=age.group)
+lines(age, bspline.fit1$fitted,lwd=2)
+abline(v=age.quan[2:4], lty=2)
+
+# these are guaranteed continuous, but the linear fit does not guarantee smoothness
+```
+
+-   Note that the basis functions are not unique. Any one-to-one transformation of a set a basis functions can be used as basis functions and will lead to the same fitted regression line.
+
+#### **4.2 Quadratic**
+
+```{r}
+knots <- age.quan[2:4]
+
+par(mfrow=c(1, 2))
+
+bsage2 <- bs(age, knots=knots, degree=2)
+matplot(age, bsage2, type='l', lwd=2, xlab="x", ylab="Basis Function",
+    main="Quardratic B-spline")
+abline(v=knots, lty=2)
+
+bspline.fit2 <- lm(strontium.ratio~bsage2)
+bspline.fit2$coefficients
+
+# helps with smoothness, but not as much as cubic
+```
+
+```{r}
+plot(age,strontium.ratio,pch=20,xlab="age (in millions of years)",
+    main="Quardratic B-spline fit", col=age.group)
+lines(age, bspline.fit2$fitted,lwd=2)
+abline(v=knots, lty=2)
+```
+
+#### **4.3 Cubic B-Spline**
+
+```{r}
+knots <- age.quan[2:4] # knots set using quantiles
+
+par(mfrow=c(1, 2))
+
+bsage3 <- bs(age, knots=knots, degree=3)
+matplot(age, bsage3, type='l', lwd=2, xlab="x", ylab="Basis function",
+    main="Cubic B-spline")
+abline(v=knots, lty=2)
+
+bspline.fit3 <- lm(strontium.ratio~bsage3)
+bspline.fit3$coefficients
+
+# cubic b sline helps fix the smoothness, but it uses more parameters 
+# in a b-spline, degree = p (polynomial degree), K knots --> not counting the number of observations; we have K + p + 1 where  1 is the intercept. these are the parameters in the model. 
+# K and p can have a trade off, but the most common approach is to use a cubic spline and then you can tune the number and location of the knots --> the higher the number of knots, the more flexible the model will be --> prediction error may be too high with an overly flexible model, that's why we use CV to tune the number and location of knots
+```
+
+```{r}
+plot(age,strontium.ratio,pch=20,xlab="age (in millions of years)",
+    main="Cubic B-spline fit", col=age.group)
+lines(age, bspline.fit3$fitted,lwd=2)
+abline(v=knots, lty=2)
+
+```
+
+#### **4.4 Tuning using cross-validation.**
+
+We can conduct cross-validation to assess different choice of knots and/or how many knots.
+
+Note that, the more knots we use, the more basis functions we need. Hence the model becomes more flexible.
+
+```{r}
+library(boot)
+
+poly.deg6 <- glm(strontium.ratio ~ age)
+
+bs3knots.fit <- glm(strontium.ratio ~ bs(age, knots = age.quan[2:4], degree=3),
+                    family="gaussian")
+
+bs6knots.fit <- glm(strontium.ratio ~ bs(age, knots = c(94.08, 104.7, 108.6,
+                                                        110.6, 115.2, 119.7), # changing the number and location of knots
+                                         degree=3),
+                    family="gaussian")
+
+cv.glm(data=fossil, poly.deg6, K=10)$delta[1] # this K is different for K for knots, this is 10 fold CV
+
+# we have 7 params: beta0 + beta1*x + beta2*x^2 +...+ beta6*x^6
+```
+
+```{r}
+cv.glm(data=fossil, bs3knots.fit, K=10)$delta[1] # also 7 parameters but smaller error; 3 knots + 3 degrees of the polynomial + 1 (intercept) = 7
+```
+
+```{r}
+cv.glm(data=fossil, bs6knots.fit, K=10)$delta[1]
+```
+
+-   Recall that cross-validation is a common approach to obtain reliable estimates of model accuracy measures. The estimates of the model accuracy measures can then be used for model comparison and tune the parameters of the machine learning algorithm. It can be applied to other spline methods.
+
+### **5 Natural (Cubic) Spline and Smoothing Spline**
+
+The B-spline is the fundation of other popular spline methods
+
+#### **5.1 Natural Spline** $\rightarrow$ special case of the B-spline
+
+Function `ns()` fits Natural (Cubic) Splines to the data. The Natural (Cubic) Spline uses (cubic) B-splines, but with more constrains for boundary segments. E.g., linear spline for the first and the last segments.
+
+```{r}
+par(mfrow=c(1, 2))
+
+ns3knots <- ns(age, knots = age.quan[2:4])
+matplot(age, ns3knots, type='l', lwd=2, xlab="x", ylab="Basis function",
+    main="Natural spline")
+abline(v=knots, lty=2)
+
+ns3knots.fit <- glm(strontium.ratio ~ ns(age, knots = c(104.43, 109.48, 115.41)),
+                    family="gaussian")
+plot(age, strontium.ratio, pch=20,xlab="age (in millions of years)",
+    main="Natural-spline fit", col=age.group)
+lines(age, ns3knots.fit$fitted,lwd=2)
+abline(v=knots, lty=2)
+```
+
+-   We can tune the knots for Natural-Spline too.
+
+### **5.2 Smoothing Splines**
+
+Function `smooth.spline()` fits smoothing splines. You may consider smoothing splines as B-splines with many knots and a penalty on the “roughness” (i.e., the “bumps” in the plots, or, more precisely, g″(x)=d2g(x)/dx2𝑔″(𝑥)=𝑑2𝑔(𝑥)/𝑑𝑥2).
+
+-   Use one of the following argument to set the model flexibility.
+
+    -   `df =`: degrees of freedom between 1 and (number of unique X-values). Large `df =` value makes the splines less smooth but more flexible. (Recall flexible models tend to have smaller bias, larger variance, and higher risk of overfitting.)
+
+    -   `spar =`: smooth parameter, typically between 0 and 1. Large `spar =` value makes the splines smoother, but less flexible. (Recall inflexible or restrictive models tend to have larger bias, smaller variance, and higher risk of underfitting.)
+
+    -   `lambda =`: penalty parameter. It depends on the scale of the predictor. Large `lambda =` value makes the splines smoother, but less flexible.
+
+```{r}
+ss.df5 <- smooth.spline(x=age, y=strontium.ratio, df=5) # when you write this model, you don't use y ~, just specificy the x, y, and df
+ss.df15 <- smooth.spline(x=age, y=strontium.ratio, df=15)
+ss.df25 <- smooth.spline(x=age, y=strontium.ratio, df=25)
+
+plot(age, strontium.ratio, pch=20,xlab="age (in millions of years)",
+    main="Smoothing-spline fit")
+lines(ss.df5, col="red", lwd=2)
+lines(ss.df15, col="blue", lwd=2)
+lines(ss.df25, col="orange", lwd=2)
+legend('bottomleft', legend = c("Df = 5", "Df = 15", "Df = 25"), col=c("red", "blue", "orange"),
+       lwd=2)
+```
+
+-   Argument `cv = TRUE` computes LOOCV. For regression, the prediction Sum of Squared Errors (PRESS) will be calculated.
+
+```{r}
+cv.press <- rep(NA, 25)
+for (i in 2:length(cv.press)){
+  cv.press[i] <- smooth.spline(x=age, y=strontium.ratio, df=i, cv = TRUE)$cv.crit 
+}
+
+plot(cv.press, type="b", pch=20)
+# df = 10 seems to be best
+
+# in general, splines are best for when there is only one predictor. when there are more, you use generalized additive model
+```
+
+```{r}
+which.min(cv.press)
+```
+
+### **6 Local Regression**
+
+```{r}
+plot(age , strontium.ratio, pch=20, xlab="age (in millions of years)",
+     main= "Local Regression")
+fit <- loess(strontium.ratio ~ age , span = .2, data = fossil)
+fit2 <- loess(strontium.ratio ~ age , span = .5, data = fossil)
+age.grid <- seq(min(age), max(age), by=diff(range(age))/200)
+lines(age.grid, predict(fit , data.frame(age = age.grid)), col = "red", lwd = 2)
+lines(age.grid, predict(fit2 , data.frame(age = age.grid)), col = "blue", lwd = 2)
+legend("bottomleft", legend = c("Span = 0.2", "Span = 0.5"), 
+       col = c("red", "blue"), lty = 1, lwd = 2)
+```
+
+### **7 Generalized Additive Model (GAM)**
+
+```{r}
+install.packages("gam")
+library(gam)
+? gam()
+```
+
+## Shrinkage
+
+Recall the `Auto` data set in the `ISLR2` package. This data frame has 392 observations on the following 9 variables.
+
+-   `mpg`: miles per gallon
+
+-   `cylinders`: Number of cylinders between 4 and 8
+
+-   `displacement`: Engine displacement (cu. inches)
+
+-   `horsepower`: Engine horsepower
+
+-   `weight`: Vehicle weight (lbs.)
+
+-   `acceleration`: Time to accelerate from 0 to 60 mph (sec.)
+
+-   `year`: Model year (modulo 100)
+
+-   `origin`: Origin of car (1. American, 2. European, 3. Japanese)
+
+-   `name`: Vehicle name
+
+```{r}
+library(ISLR2)
+colnames(Auto)
+```
+
+```{r}
+auto.data <- Auto
+auto.data$country <- factor(auto.data$origin, labels = c("American", "European",
+                                                         "Japanese"))
+library("ggplot2")                     
+library("GGally")
+
+ggpairs(auto.data, columns = 1:5, ggplot2::aes(colour=country)) + theme_bw()
+```
+
+### **1 Collinearity: VIF**
+
+```{r}
+# install.packages("car")
+library(car)
+```
+
+```{r}
+mpg.lm <- lm(mpg ~ cylinders + displacement + horsepower + weight +
+               acceleration + year, data=auto.data )
+
+vif(mpg.lm)
+```
+
+```{r}
+mpg.lm2 <- lm(mpg ~ cylinders + displacement + horsepower + weight +
+                acceleration + year + country, data=auto.data )
+
+vif(mpg.lm2)  # With categorical predictors
+```
+
+### **2 Automatic Variable Selection Algorithms (review)**
+
+#### **2.1 Stepwise Selection**
+
+Function `step()` conducts stepwise for linear model and generalized linear models using AIC or BIC.
+
+```{r}
+mpg.lm2
+```
+
+```{r}
+step(mpg.lm2, direction="both") # AIC
+```
+
+To use BIC as the selection criteria, set argument `k = (sample size)`. Though the output still lists “AIC =”, it is actually the BIC value.
+
+```{r}
+step(mpg.lm2, direction="both", k = log(length(mpg.lm2$fitted.values)))
+```
+
+Remarks:
+
+-   See the help file for other arguments in `step()`. For example, you can specify the `scope` of the selection.
+
+-   Other packages may have their own stepwise selection function. E.g., `stepAIC()` in pacakge `MASS`.
+
+#### **2.2 Best Subset Algorithem**
+
+Use `regsubsets()` from package {`leaps`}.
+
+```{r}
+# install.packages("leaps")
+library(leaps)
+```
+
+```{r}
+mpg.sub <- regsubsets(mpg ~ cylinders + displacement + horsepower +
+                        weight + acceleration + year + country, auto.data)
+
+summary(mpg.sub)
+```
+
+For models with the same number of parameters (𝑝), the “best” model is selected based on the the lowest Sum of Squared Residuals (aka. SSE, Residual Sum of Squares, RSS).
+
+Use desired selection criteria to determine the optimal number of parameters (𝑝).
+
+```{r}
+mpg.subsum <- summary(mpg.sub)
+mpg.subsum$adjr2
+```
+
+```{r}
+mpg.subsum$bic
+```
+
+```{r}
+mpg.subsum$cp
+```
+
+```{r}
+par(mfrow=c(1, 2))
+plot(mpg.sub)
+plot(mpg.sub, scale = "adjr2")
+```
+
+### **3 Shrinkage Methods: Ridge regression and Lasso with `glmnet`**
+
+Function `glmnet()` in package `glmnet` can fit both Ridge regression and LASSO (least absolute shrinkage and selection operator). The package also has a function `cv.glmnet()` that conducts K-fold cross-validation.
+
+```{r}
+# install.packages("glmnet")
+library(glmnet)
+```
+
+For Ridge regression and LASSO, `glmnet()` and `cv.glmnet()` need, at least, the following arguments:
+
+-   x: the matrix of predictors terms. (The design matrix of the linear model, but without the column of 1s.)
+
+-   y: the vector of response.
+
+-   alpha: 0 for Ridge regression, 1 for LASSO.
+
+-   lambda: often a decreasing sequence of positive numbers.
+
+#### **3.1 Ridge Regression**
+
+##### **3.1.1 Fit the model with `glmnet(x, y, alpha=0, lambda)`**
+
+the alpha controls whether we're using LASSO or ridge
+
+```{r}
+mpg.lm2
+```
+
+```{r}
+auto.X <- model.matrix(mpg.lm2)[, -1]  # Remove the first 1 column of 1's
+dim(auto.X)
+```
+
+```{r}
+auto.ridge <- glmnet(x = auto.X, y=auto.data$mpg, alpha=0, lambda = seq(10, 0, by= -0.1)) # can set a range of lambda
+plot(auto.ridge)
+```
+
+\- What’s in the above plot?
+
+-   Is it really L1 Norm?
+
+    -   NO! Since we set `alpha=0` in the `glmnet()` function. The horizontal axis is the L2 Norm ∑pj=1(βj)2∑𝑗=1𝑝(𝛽𝑗)2.
+
+##### **3.1.2 K-fold cross-validation (default** K=10𝐾=10) with `cv.glmnet()`
+
+```{r}
+set.seed(2023)
+auto.ridgeCV <- cv.glmnet(x=auto.X, y = auto.data$mpg, alpha=0, 
+                          lambda=seq(10, 0, by=-0.1))
+auto.ridgeCV
+```
+
+```{r}
+auto.ridgeCV <- cv.glmnet(x=auto.X, y = auto.data$mpg, alpha=0, 
+                          lambda=seq(10, 0, by=-0.01))
+auto.ridgeCV
+```
+
+```{r}
+names(auto.ridgeCV)
+```
+
+```{r}
+plot(auto.ridgeCV)
+```
+
+##### **3.1.3 Estimate the coefficients using `predict(..., type="coefficients")`**
+
+```{r}
+lambda.opt <- auto.ridgeCV$lambda.min
+lambda.opt
+```
+
+```{r}
+predict(auto.ridge, s = lambda.opt, type="coefficients")
+```
+
+##### **3.1.4 Predict the response using `predict(..., type="response")`**
+
+```{r}
+# Generate a "new" set of X-value for the sample.
+auto.new <- auto.X[sample(nrow(auto.X), 3), ]
+dim(auto.new)
+```
+
+```{r}
+lambda.opt
+```
+
+```{r}
+predict(auto.ridge, newx=auto.new, s=lambda.opt, type="response")
+```
+
+#### **3.2 LASSO Regression**
+
+Set `alpha=1` in `glmnet()` and `cv.glmnet()` to fit LASSO.
+
+```{r}
+head(auto.X, 2)
+```
+
+```{r}
+auto.lasso <- glmnet(x = auto.X, y=auto.data$mpg, alpha=1, lambda = seq(10, 0, by= -0.1))
+par(mfrow=c(1, 2))
+plot(auto.ridge, main="Ridge regression")
+plot(auto.lasso, main="LASSO")
+```
+
+\- Compare the above plots:
+
+-   Which one is really using L1 Norm?
+
+-   What are the similarities?
+
+-   What is the main difference?
+
+Fitting the model, obtaining the regression coefficients and predicting the response.
+
+```{r}
+set.seed(2023)
+auto.lassoCV <- cv.glmnet(x=auto.X, y = auto.data$mpg, alpha=1, 
+                          lambda=seq(10, 0, by=-0.001))
+auto.lassoCV
+```
+
+```{r}
+plot(auto.lassoCV)
+```
+
+```{r}
+lambda.opt <- auto.lassoCV$lambda.min
+lambda.opt
+```
+
+```{r}
+predict(auto.lasso, s = lambda.opt, type="coefficients")
+```
+
+```{r}
+auto.new
+```
+
+```{r}
+predict(auto.lasso, newx=auto.new, s=lambda.opt, type="response")
+```
+
+#### **3.3 (Extra) Another Ridge Regression function: `lm.ridge()` in package `MASS`**
+
+```{r}
+library(MASS)
+auto.ridge2 <- lm.ridge(mpg ~ cylinders + displacement + horsepower + weight + 
+                          acceleration + year + country, data = auto.data,
+                        lambda = seq(0, 100, 0.01))
+plot(auto.ridge2)
+```
+
+```{r}
+auto.ridge2 <- lm.ridge(mpg ~ cylinders + displacement + horsepower + weight + 
+                          acceleration + year + country, data = auto.data,
+                        lambda = seq(0, 4, 0.001))
+
+select(auto.ridge2)
+```
+
+```{r}
+plot(auto.ridge2$lambda, auto.ridge2$GCV)
+```

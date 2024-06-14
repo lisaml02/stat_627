@@ -1,0 +1,230 @@
+---
+title: "class_6_13"
+author: "lisa liubovich"
+date: "2024-06-13"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+options(repos = c(CRAN = "https://cran.r-project.org"))
+```
+
+# Class Notes
+
+1.  What is Principal Components Analysis PCA?
+    1.  Concept and Purpose
+        1.  unsupervised learning
+        2.  used as a method of dimension reduction $\rightarrow$ reducing the complexity of the model
+    2.  Computation (matrix, brief)
+    3.  Applications of PCA
+2.  Principal Component Regression (PCR)
+    1.  steps of PCR
+    2.  Tuning: choose the number of PCs
+3.  Partial Least Squares (PLS)
+    1.  Connection to PCR
+    2.  Tuning
+4.  Summary of regularization and dimension reduction (recap, review)
+    1.  Motivation
+    2.  Available methods, their similarity and differences
+    3.  Assessing the models: cross-validation, boostrap, interpretability
+
+# R Notes
+
+Recall the `Auto` data set in the `ISLR2` package. This data frame has 392 observations on the following 9 variables.
+
+-   `mpg`: miles per gallon
+
+-   `cylinders`: Number of cylinders between 4 and 8
+
+-   `displacement`: Engine displacement (cu. inches)
+
+-   `horsepower`: Engine horsepower
+
+-   `weight`: Vehicle weight (lbs.)
+
+-   `acceleration`: Time to accelerate from 0 to 60 mph (sec.)
+
+-   `year`: Model year (modulo 100)
+
+-   `origin`: Origin of car (1. American, 2. European, 3. Japanese)
+
+-   `name`: Vehicle name
+
+```{r}
+library(ISLR2)
+colnames(Auto)
+```
+
+```{r}
+auto.data <- Auto
+auto.data$country <- factor(auto.data$origin, labels = c("American", "European",
+                                                         "Japanese"))
+library("ggplot2")                     
+library("GGally")
+
+ggpairs(auto.data, columns = 1:5, ggplot2::aes(colour=country)) + theme_bw()
+```
+
+## **1 Concepts of principal component**
+
+If we use a linear regression model to predict `mpg`, we’ll have high correlation amongst the predictors.
+
+```{r}
+mpg.lmF <- lm(mpg ~ .-origin-name, data=auto.data)
+mpg.lmF
+```
+
+```{r}
+car::vif(mpg.lmF)
+```
+
+We will focus on the predictors now.
+
+```{r}
+auto.X <- model.matrix(mpg.lmF)[, -1]  # Design matrix
+```
+
+Function `prcomp()` conducts the Principal Component Analysis.
+
+```{r}
+# Caution: the following line of code is not ideal. It is to illustrate an issue.
+auto.pc <- prcomp(auto.X)  
+summary(auto.pc)
+```
+
+```{r}
+auto.pc
+```
+
+We see that the 1st principal component contains a huge portion of the total variation of X variables, and it is dominated by variable “weight”. Looking at the data, we see that weight simply has the largest values.
+
+For this reason, the variables are usually standardized first (subtract each variable by its mean, then divide each centered-variable by its standard deviation). This is done using `scale=TRUE` argument.
+
+```{r}
+auto.pcs <- prcomp(auto.X, scale=TRUE)
+summary(auto.pcs)
+```
+
+```{r}
+round(cor(auto.pcs$x), 4)
+```
+
+```{r}
+auto.pcs$rotation # Extract the loading (i.e., transformation)
+```
+
+```{r}
+par(mfrow=c(1, 2))
+plot(auto.pc, main="PCs of Unscaled Data")
+screeplot(auto.pcs, main="PCs of Scaled Data")
+```
+
+A biplot shows the first 2 PCs scores (bottom, left) and their loadings (top, right).
+
+```{r}
+biplot(auto.pcs, scale=0, cex=0.5, main="Axis not scaled") # Loadings are plotted as is.
+```
+
+```{r}
+biplot(auto.pcs, scale=1, cex=0.5, mai="Scaled axis") # Loadings are scaled.
+```
+
+For observations in the data frame, their PC scores are saved. PC scores for new observations can be computed using `predict()` function.
+
+```{r}
+auto.pcs$x[c(1:3), ]
+```
+
+```{r}
+newx <- data.frame(cylinders = 6, displacement = 250, horsepower = 88, 
+                   weight = 3021, acceleration = 17, year =73, 
+                   countryEuropean = 0, countryJapanese = 0)
+predict(auto.pcs, newdata = newx)
+```
+
+## **2 Principal Components regression (PCR)**
+
+It will be more convenient to use `pcr()` function from package `pls` to use PCs in regression analysis. It puts 2 analysis into 1 function:
+
+-   First, conduct PCA on the predictors and save the PC scores for all observations.
+
+-   Next, conduct linear regression use the PCs as the predictors in the model.
+
+```{r}
+install.packages("pls")
+library(pls)
+```
+
+### **2.1 Fit PCR**
+
+Be sure to include `scale=TRUE` argument.
+
+```{r}
+auto.pcr <- pcr(mpg ~ .-name-origin, data=auto.data, scale=T)
+summary(auto.pcr)
+```
+
+-   What is the value of R2𝑅2 if we use:
+
+    -   The first PC for the regression?
+
+    -   The first 2 PCs for the regression?
+
+    -   The first 5 PCs for the regression?
+
+    -   All PCs (8 in this case) for thr regression?
+
+### **2.2 Cross-validation**
+
+`pcr()` function has be built-in option for K-fold (default 𝐾=10) and LOOCV. Use argument `validation = "CV"` or `validation = "LOO"`.
+
+```{r}
+auto.pcrCV <- pcr(mpg ~ .-name-origin, data=auto.data, scale=T, validation="CV")
+summary(auto.pcrCV)
+```
+
+```{r}
+validationplot(auto.pcrCV)
+```
+
+```{r}
+auto.pcrLOO <- pcr(mpg ~ .-name-origin, data=auto.data, scale=T, validation="LOO")
+summary(auto.pcrLOO)
+```
+
+```{r}
+validationplot(auto.pcrLOO)
+```
+
+### **2.3 Predict the response for new data.**
+
+`predict()` function works for `pcr()` output object. Use argument `ncomp =` to declare how many PC’s to use in the model.
+
+```{r}
+predict(auto.pcr, newdata=auto.data[c(1, 2), ], ncomp=4) # If 4 PCs are used.
+```
+
+## **3 Partial Least Squares regression (PLS)**
+
+Use function `plsr()`. It is similar to `pcr()`
+
+```{r}
+auto.plsCV <- plsr(mpg ~ .-name-origin, data=auto.data, scale=T, validation="CV")
+summary(auto.plsCV)
+```
+
+```{r}
+validationplot(auto.plsCV)
+```
+
+```{r}
+names(auto.plsCV)
+```
+
+```{r}
+predict(auto.plsCV, newdata=auto.data[c(1, 2), ], ncomp=4) # If 4 PCs are used.
+```

@@ -1,0 +1,194 @@
+---
+title: "hw_04"
+author: "lisa liubovich"
+date: "2024-06-11"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# 1. College Applications
+
+Predict the number of applications received based on the other variables in the College data set in {ISLR2}.
+
+Use the following code to split the data set randomly. Use the subset college.data for the most of the analysis. Set aside holdout.data data until the last 2 sub-questions.
+
+```{r}
+library(ISLR2) 
+data("College")
+my.college <- College[-484, ] # remove an extreme case.
+#my.college <- College[College$Apps <=16000, ] # remove several extreme case.
+train.pct <- 0.78
+set.seed(2024)
+Z <- sample(nrow(my.college), floor(train.pct*nrow(my.college))) 
+college.data <- my.college[Z, ] 
+holdout.data <- my.college[-Z, ]
+```
+
+Recall that we fit the data in homework 1.
+
+• we fit the **full** model with all 17 predictors. That is:
+
+```{r}
+college.lmF <- lm(Apps ~ ., data = college.data)
+college.lmF
+```
+
+Using stepwise selection, AIC is the smallest with 12 predictors:
+
+Apps \~ Private + Accept + Enroll + Top10perc + Top25perc + F.Undergrad + Outstate + Room.Board + PhD + perc.alumni + Expend + Grad.Rate
+
+Using the best-subset algorithm. BIC is the smallest with 7 predictors:
+
+Apps \~ Private + Accept + Top10perc + Outstate + Room.Board + PhD + Expend
+
+Continue working on this data set and the above models.
+
+(a) Compute the variance inflation factor and comment on the severity of the collinearity of the data. Why is “collinearity” a concern, even if the model is correct?
+
+    (a) Some of the variables like Accept, Enroll, and F.Undergrad have VIF values over 5 or 10, indicating that they suffer from more severe multicollinearity. Even if this model is correct, multicollinearity is a concern because it increases the variance and thus the standard errors, which make for less accurate coefficient estimates, inferences, and overly wide confidence intervals.
+
+    ```{r}
+    library(car)
+
+    vif_college <- vif(college.lmF)
+    print(vif_college)
+    ```
+
+(b) Evaluate prediction accuracy of your selected models based on AIC and BIC. Estimate the prediction mean squared error by 10-fold cross-validation. Recall that glm( ..., family=gaussian) fits linear regression and its outcome can be used in cv.glm() (boot package) for cross-validation.
+
+    ```{r b}
+    library(boot)
+    AIC_college <- glm(Apps ~ Private + Accept + Enroll + Top10perc + Top25perc + F.Undergrad + Outstate + Room.Board + PhD + perc.alumni + Expend + Grad.Rate, data = college.data, family = "gaussian")
+
+    BIC_college <- glm(Apps ~ Private + Accept + Top10perc + Outstate + Room.Board + PhD + Expend, data = college.data, family = "gaussian")
+
+    cv.glm(college.data, glmfit = AIC_college, K = 10)$delta[1]
+
+    cv.glm(college.data, BIC_college, K = 10)$delta[1]
+
+    ```
+
+    The BIC model has a lower predicted MSE by 10 fold CV.
+
+(c) Consider the **full** model with all 17 predictors (reminder: use data frame college.data you recreated at the beginning). Use functions in package glmnet to fit a ridge regression.
+
+    ```{r c}
+    library(glmnet)
+    college.X <- model.matrix(college.lmF)[, -1]
+    dim(college.X)
+    ```
+
+• Select $\lambda$ chosen by (default 10-fold) cross-validation.
+
+```{r}
+college.ridgeCV <- cv.glmnet(x=college.X, y = college.data$Apps, alpha=0, 
+                          lambda=seq(10, 0, by=-0.1))
+college.ridgeCV
+```
+
+• Plot the results of the cross-validation.
+
+```{r}
+plot(college.ridgeCV)
+```
+
+• Report the esimated MSE of the model based on your selected $\lambda$
+
+```{r}
+college.ridgeCV
+```
+
+estimated MSE is 1005968.
+
+(d) Consider the **full** model with all 17 predictors (reminder: use data frame college.data you recreated at the beginning). Use functions in package glmnet to fit a LASSO regression.
+
+    ```{r d}
+    college.LASSOCV <- cv.glmnet(x=college.X, y = college.data$Apps, alpha=1, 
+                              lambda=seq(10, 0, by=-0.1))
+    college.LASSOCV
+    ```
+
+• Select $\lambda$chosen by (default 10-fold) cross-validation.
+
+• Plot the results of the cross-validation.
+
+```{r}
+plot(college.LASSOCV)
+```
+
+• Report the esimated MSE of the model based on your selected $\lambda$.
+
+```{r}
+college.LASSOCV
+```
+
+estimated MSE is 992888
+
+(e) Fit a PCR model on college.data, with *M* (the number of principal components) chosen by cross validation. Prepare a validation plot. Report the estimated test error (MSE), along with the value of *M* selected by cross-validation.
+
+    ```{r e}
+    library(pls)
+    pcr_collegeCV <- pcr(Apps ~ ., data = college.data, scale = "TRUE", validation = "CV")
+    summary(pcr_collegeCV)
+
+    validationplot(pcr_collegeCV)
+    ```
+
+    estimated MSE = RMSEP^2^ = 1013^2^ = 1026169
+
+(f) Fit a PLS (partial least squares) model on college.data, with *M* (the number of principal components) chosen by cross validation. Prepare a validation plot. Report the estimated test error (MSE), along with the value of *M* selected by cross-validation.
+
+    ```{r f}
+    college_plsCV <- plsr(Apps ~ ., data = college.data, scale = "TRUE", validation = "CV")
+    summary(college_plsCV)
+
+    validationplot(college_plsCV)
+    ```
+
+    estimated MSE = 1008^2^ = 1016064
+
+(g) Summarize and comment on the results obtained from the following models. Recommend a model, and justify your choice.
+
+| Method                                       | Number of predictors | Estimated Prediction MSE |
+|----------------------------------|------------------|--------------------|
+| Least Squares 1: model with the smallest AIC | 12                   | 997934.5                 |
+| Least Squares 2: model with the smallest BIC | 7                    | 980591.9                 |
+| Ridge Regression (lambda.min)                | 17                   | 1005968                  |
+| Lasso (lambda.min)                           | 16                   | 992888                   |
+| Lasso (lambda.1se)                           | 16                   | 992888                   |
+| PCR PLS                                      | 15                   | 1016064                  |
+
+Based on the summarized results, the model with the smallest BIC (Least Squares 2), which includes 7 predictors, is recommended. This model achieves an estimated prediction MSE of 980,591.9, indicating superior predictive performance compared to the other models evaluated. BIC's preference for parsimony aligns well here, emphasizing a balance between model complexity and predictive accuracy. While ridge regression and lasso offer regularization and feature selection benefits, the chosen least squares model provides a straightforward and effective choice, balancing predictive power with model simplicity. Adjustments may be considered based on specific criteria such as interpretability or computational efficiency, but for overall predictive performance based on the given metrics, Least Squares 2 stands out as the optimal choice.
+
+(h) Apply the above models to the hold-out data holdout.data that we created at the beginning. Which model wins this contest in terms of prediction accuracy? (This should be the first time you use observations in holdout.data data frame.)
+
+```{r h}
+X_holdout <- as.matrix(holdout.data[, -1])
+y_holdout <- holdout.data$Apps
+
+AIC_college_2 <- glm(Apps ~ Private + Accept + Enroll + Top10perc + Top25perc + F.Undergrad + Outstate + Room.Board + PhD + perc.alumni + Expend + Grad.Rate, data = holdout.data, family = "gaussian")
+
+BIC_college_2 <- glm(Apps ~ Private + Accept + Top10perc + Outstate + Room.Board + PhD + Expend, data = holdout.data, family = "gaussian")
+
+cv.glm(holdout.data, glmfit = AIC_college_2, K = 10)$delta[1]
+
+cv.glm(holdout.data, BIC_college_2, K = 10)$delta[1]
+
+college.ridgeCV2 <- cv.glmnet(x = X_holdout, y = y_holdout, alpha = 0, lambda = seq(10, 0, by = -0.1))
+college.ridgeCV2
+
+college.LASSOCV2 <- cv.glmnet(x = X_holdout, y = y_holdout, alpha = 1, lambda = seq(10, 0, by=-0.1))
+college.LASSOCV2
+
+college_plsCV2 <- plsr(Apps ~ ., data = holdout.data, scale = "TRUE", validation = "CV")
+summary(college_plsCV2)
+```
+
+(h) AIC MSE = 1398325, BIC MSE = 1365042, ridge MSE = 21.69, LASSO MSE = 3.817^-25^ , PLS MSE = 1228\^2 = 1507984. LASSO wins the contest by far.
+
+(i) **Stat-627** Compare your estimated prediction MSE from the training data college.data (part i) and the resulting MSE from the holdout.data (part j). Is there anything “surprising” that worth investigation? If yes, what are the possible causes? (Note. It is not surprising to see a tuned “best” model not to perform the best on the testing data.)
+
+Yes, the prediction MSEs for ridge regression and LASSO are considerably smaller than all the other prediction MSEs as well as all of the training MSEs. This is for a couple reasons: first, the shrinkage methods provide a better bias-variance tradeoff by shrinking the coefficients (thus reducing bias) and significantly reducing variance. This is consistent with the fact that shrinkage methods in general tend to make models less complex by shrinking the coefficients to almost 0 (ridge) or even 0 (LASSO). The smaller prediction MSEs observed indicate that these regularization techniques have effectively optimized the model complexity for improved prediction accuracy on the holdout data. The MSEs are also so much smaller because of the use of cross validation, where the lambda parameter (regularization strength) is selected to minimize prediction error on validation data. This ensures that the model is tuned to perform well on unseen data, further contributing to the smaller prediction MSEs observed.

@@ -1,5 +1,5 @@
 ---
-title: "class_5_38"
+title: "class_5_28"
 author: "lisa liubovich"
 date: "2024-05-28"
 output: html_document
@@ -27,10 +27,10 @@ Classification is when the response variable is cateegorical –\> class or cate
 
                 3.  Confusion matrix for binary response:
 
-                    | Observed "True    | Predicted Negative ( $\hat{y}$ = 0)                                      | Predicted Positive ( $\hat{y}$ = 1) |
-                    |------------------------|------------------------|------------------------|
-                    | negative (y = 0)  | True Negative (count of observations with correct $\hat{y}$ = 0 ) aka TN | False Positive (FP)                 |
-                    | positive (y = 1)  | False Negative (FN)                                                      | True Positive aka (TP)              |
+                    | Observed "True   | Predicted Negative ( $\hat{y}$ = 0)                                      | Predicted Positive ( $\hat{y}$ = 1) |
+                    |------------------|--------------------------------------------------------------------------|-------------------------------------|
+                    | negative (y = 0) | True Negative (count of observations with correct $\hat{y}$ = 0 ) aka TN | False Positive (FP)                 |
+                    | positive (y = 1) | False Negative (FN)                                                      | True Positive aka (TP)              |
 
                 4.  Rates:
 
@@ -48,12 +48,12 @@ Classification is when the response variable is cateegorical –\> class or cate
     1.  Distance and neighbors
         1.  Example: K nearest neighbor(s) = smallest distance
 
-            | observations                                                            | 1                                      | 2                                      | n   |
-            |-------------------------------------------------------------------------|----------------------------------------|----------------------------------------|-----|
-            | X1                                                                      | 8                                      | 7                                      | ... |
-            | X2                                                                      | 12                                     | 10                                     | ... |
-            | Y                                                                       | 0                                      | 0                                      |     |
-            | neighbor (defined by Euclidean distance); distance to (x1, x2) = (6,11) | $\sqrt(6-8)^2 + (11-12)^2$ = $\sqrt5$  | $\sqrt(6-7)^2 + (11-10)^2$ = $\sqrt5$  |     |
+            | observations                                                            | 1                                     | 2                                     | n   |
+            |-------------------------------------------------------------------------|---------------------------------------|---------------------------------------|-----|
+            | X1                                                                      | 8                                     | 7                                     | ... |
+            | X2                                                                      | 12                                    | 10                                    | ... |
+            | Y                                                                       | 0                                     | 0                                     |     |
+            | neighbor (defined by Euclidean distance); distance to (x1, x2) = (6,11) | $\sqrt(6-8)^2 + (11-12)^2$ = $\sqrt5$ | $\sqrt(6-7)^2 + (11-10)^2$ = $\sqrt5$ |     |
 
         2.  ties can be broken by flipping a coin or other random methods
 
@@ -348,7 +348,7 @@ prop.table(table(depr.training$Diagnosis, predicted.class), 1)
 
 Note that:
 
--   Although the training error rate is 19% (i.e., classification rate 81%), the False Negative rate, P(Yˆ=0|Y=1)𝑃(𝑌^=0|𝑌=1), is very high (95.6%).
+-   Although the training error rate is 19% (i.e., classification rate 81%), the False Negative rate, P(Yˆ=0\|Y=1)𝑃(𝑌\^=0\|𝑌=1), is very high (95.6%).
 
 -   If we increase the cutoff value, we’ll have even higher FNR. (Why?)
 
