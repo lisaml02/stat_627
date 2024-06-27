@@ -153,7 +153,7 @@ estimated MSE is 992888
 (g) Summarize and comment on the results obtained from the following models. Recommend a model, and justify your choice.
 
 | Method                                       | Number of predictors | Estimated Prediction MSE |
-|----------------------------------|------------------|--------------------|
+|----------------------------------------------|----------------------|--------------------------|
 | Least Squares 1: model with the smallest AIC | 12                   | 997934.5                 |
 | Least Squares 2: model with the smallest BIC | 7                    | 980591.9                 |
 | Ridge Regression (lambda.min)                | 17                   | 1005968                  |

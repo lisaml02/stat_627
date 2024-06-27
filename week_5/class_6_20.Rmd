@@ -1,0 +1,242 @@
+---
+title: "class_6_20"
+output: html_document
+date: "2024-06-20"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Class Notes
+
+1.  Maximum Margin Classifier, Support Vector Classifier, and Support Vector Machines
+    1.  Support vector, boundary and margins
+    2.  Violations
+    3.  Kernels: Linear vs non-linear boundary
+    4.  Tuning SVM: kernel, cost of violation
+2.  Computation: linear optimization (brief, concepts)
+    1.  Maximizing the margins with restrictions on: beta, cost
+    2.  A non-linear boundary may be achieved though linear optimization
+
+# R Notes
+
+```{r}
+# install.packages("e1071")
+library(e1071)
+```
+
+## **1 Carseat data**
+
+Recall the `Carseats` data in package `ISLR2` (and in Lab 9, Trees).
+
+```{r}
+library(ISLR2)
+names(Carseats)
+```
+
+```{r}
+carseat.data <- Carseats
+carseat.data$High <- factor(ifelse(Carseats$Sales <= 8, "No", "Yes"))
+
+set.seed(2023)
+n <- nrow(carseat.data)
+z <- sample(n, floor(n*0.8))
+carseat <- carseat.data[z, ]
+row.names(carseat) <- NULL
+carseat.new <- carseat.data[-z, ]  # hold-out for testing at the end.
+```
+
+```{r}
+plot(Price ~ CompPrice, col=High, pch=20, data=carseat)
+legend(80, 180, pch=20, col=c(1, 2), legend = c("Low sales", "High sales"))
+```
+
+-   The two classes cannot be separated by a hyperplane. Hence the maximum margin classifier won’t work. But Support Vector Classifier and Support Vector Machine will!
+
+## **2 `svm()` fits SVM with various kernels**
+
+-   Old version of `svm()` may require that you use a data frame that **only** has the response and the predictors used in the model.
+
+-   To plot the classification boundary (in 2D), we’ll need to declare the predictors in the `plot()` function
+
+### **2.1 Linear kernel (Support vector classifier)**
+
+```{r}
+svm.lin <- svm(High ~ Price + CompPrice, kernel="linear",
+                data=carseat)
+summary(svm.lin)
+```
+
+```{r}
+plot(svm.lin, data=carseat, Price ~ CompPrice) # expression is strictly for the predictors
+```
+
+-   Support vectors are marked as “x” in the plots (default).
+
+-   Other observations are marked as “o” in the plots (default).
+
+-   If you want to identify the support vectors:
+
+```{r}
+svm.lin$index[1:5] # index of the support vectors
+```
+
+```{r}
+head(carseat[svm.lin$index, c(2, 6, 12)])
+```
+
+### **2.2 Polynomial**
+
+```{r}
+svm.pol <- svm(High ~ Price + CompPrice, kernel="polynomial",
+                data=carseat)
+summary(svm.pol)
+```
+
+```{r}
+plot(svm.pol, data=carseat, Price ~ CompPrice)
+```
+
+### **2.3 Radial**
+
+```{r}
+svm.rad <- svm(High ~ Price + CompPrice, kernel="radial",
+                data=carseat)
+summary(svm.rad)
+```
+
+```{r}
+plot(svm.rad, data=carseat, Price ~ CompPrice)
+```
+
+### **2.4 Sigmoid**
+
+```{r}
+svm.sig <- svm(High ~ Price + CompPrice, kernel="sigmoid",
+                data=carseat)
+summary(svm.sig)
+```
+
+```{r}
+plot(svm.sig, data=carseat, Price ~ CompPrice)
+```
+
+## **3 `tune()` the cost and the kernel**
+
+The function `tune()` conducts K-10 fold (by default) cross-validation over a “grid” of supplied parameter range. For classification, the CV prediction error is calculated. For regression, the CV mean squared error is calculated.
+
+The “`cost =`” argument in `svm()` sets the cost of violations (this is not the C is the textbook, but they are related. When the `cost` argument is small, then the margins will be wide and many support vectors will be on the margin or will violate the margin.
+
+Let’s try 7 `cost` budget values (0.001, 0.01, 0.1, 1, 10, 100, 1000) and 4 kernels. The “grid” is 7 x 4 and 28 models will be evaluated.
+
+```{r}
+set.seed(2023)
+svm.tuning <- tune(svm, High ~ Price + CompPrice, data = carseat,
+                   ranges = list(cost = 10^seq(-3, 3), 
+                                 kernel = c("linear", "polynomial", 
+                                            "radial", "sigmoid")))
+summary(svm.tuning)
+```
+
+-   When using 2 predictors, using `cost = 100` and `kernel="radial"` gives the smallest cross-validation error rate: 28.1%
+
+-   In practice, one may run another grid search, using finer grids, near the optimal parameters from the previous grid search.
+
+-   *Recall in 10-fold cross-validation*:
+
+    -   The results may be different when a different random seed, or function version, is used.
+
+    -   The misclassification rate (or other accuracy measurements such as MSE) calculated from cross-validation is a valid estimate of the model’s misclassification rate (or MSE, etc.), because they are calcuated based on the observations in “testing” folds.
+
+## **4 More predictors**
+
+```{r}
+svm.mlin <- svm(High ~ ., kernel="linear", data=carseat[, -1])
+summary(svm.mlin)
+```
+
+```{r}
+plot(svm.mlin, data=carseat, Price ~ CompPrice)
+```
+
+```{r}
+plot(svm.mlin, data=carseat, Price ~ Advertising)
+```
+
+-   The above 2-D plots are “sliced” by holding the other predictors at 0.
+
+Let’s tune the SVM with more predictors. We’ll remove `Sales`(column 1) when we fit the model because `High` was created from `Sales`.
+
+```{r}
+set.seed(2023)
+svm2.tuning <- tune(svm, High ~ . , data = carseat[, -1],
+                   ranges = list(cost = 10^seq(-3, 3), 
+                                 kernel = c("linear", "polynomial", 
+                                            "radial", "sigmoid")))
+svm2.tuning
+```
+
+## **5 Predict the “new” data (and another run of validation)**
+
+Based on the previous tuning, let’s consider the following 2 models:
+
+```{r}
+svm.tuning$best.parameters
+```
+
+```{r}
+svm.rad2 <- svm(High ~ Price + CompPrice, data = carseat, cost = 100, kernel = "radial")
+yhat.new <- predict(svm.rad2, newdata=carseat.new)
+err.rad2 <- c(mean(carseat.new$High != yhat.new), svm.tuning$best.performance)
+
+svm2.tuning$best.parameters
+```
+
+```{r}
+svm.mlin2 <- svm(High ~ ., data=carseat[, -1], cost=10, kernel="linear")
+yhat.new <- predict(svm.mlin2, newdata=carseat.new)
+err.mlin2 <- c(mean(carseat.new$High != yhat.new), svm2.tuning$best.performance)
+
+err.table <- rbind(err.rad2, err.mlin2)
+colnames(err.table) <- c("new.test.data", "Cross-validation")
+err.table
+```
+
+## **6 More than two classes**
+
+`svm()` handles response variable with more than two categories. But the response must be a factor!
+
+```{r}
+carseat$LMH <- cut(carseat$Sales, breaks = c(-Inf, 6, 8, Inf) , label=c("L", "M", "H"))
+table(carseat$LMH)
+```
+
+```{r}
+set.seed(2023)
+LMH.tune <- tune(svm, LMH ~. -Sales - High, data=carseat, 
+                 ranges = list(cost = 10^seq(-3, 3), 
+                                 kernel = c("linear", "polynomial", 
+                                            "radial", "sigmoid")))
+LMH.tune$best.parameters
+```
+
+```{r}
+# Remove Sales (column 1) and High (column 12) to avoid plotting error.
+LMH.svm <- svm(LMH ~., data=carseat[, -c(1, 12)], cost = 1000, kernel = "linear")
+plot(LMH.svm, data=carseat, Price ~ CompPrice)
+```
+
+```{r}
+plot(LMH.svm, data=carseat, Price ~ Advertising)
+```
+
+```{r}
+yhat.new <- predict(LMH.svm, newdata=carseat.new)
+
+carseat.new$LMH <- cut(carseat.new$Sales, breaks = c(-Inf, 6, 8, Inf),
+                        label=c("L", "M", "H"))
+c(mean(carseat.new$LMH != yhat.new), LMH.tune$best.performance)
+```
+
+-   In general, it is more difficult to predict finer/more classes.

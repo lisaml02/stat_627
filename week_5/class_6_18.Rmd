@@ -1,0 +1,499 @@
+---
+title: "class_6_18"
+output: html_document
+date: "2024-06-18"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+options(repos = c(CRAN = "https://cran.r-project.org"))
+```
+
+# Class Notes
+
+1.  Basic concepts about "trees" 1. Tree structure
+    1.  starts with the root/node/split 2. Growing a tree (brief)
+    2.  at each node/split of the tree, ask: which predictor/feature will you use? what is the cutoff?
+    3.  the criteria of choosing either the predictor or cutoff is to maximize the **reduction** of SSE (regression) or deviance (classification)
+        1.  such as: MSE, SSE, Gini impurity index, misclassification rate, residual deviance/residual mean deviance $\rightarrow$ better estimated by prediction/validation/testing set
+    4.  the more we grow the tree, the more flexible it becomes
+    5.  each node/split evaluates the conditions (which predictor to use and what cut off) and if true, one continues down the left side
+    6.  once you cannot split anymore, you reach the leaf/terminal node $\rightarrow$ this is where you start to make the prediction
+        1.  once you decide not to split anymore, it is a terminal node
+        2.  pure node contains data from a single class only
+            3.  Prediction/Classification with trees
+    7.  if the response is numerical, we will use the mean based on the observations within that leaf
+    8.  if the response is categorical, the prediction will be decided via popular vote (ie who gets the highest percentage of the votes
+        1.  it is also common to get a proportion of each class from the leaf
+    9.  note that predictions vary from leaf to leaf
+    10. size of the tree: number of leaves $\rightarrow$ can decide this beforehand but can also use CV to tune the optimal number of terminal nodes 4. Pruning with cross-validation
+    11. aka Tuning $\rightarrow$ sort of like variable selection
+    12. reducing the size of the tree/finding the optimal number of terminal nodes/leaves
+    13. if you only have two predictors, you can visualize the separation of the two predictors with segments in a plot
+2.  Bootstrap Aggregation (bagging) $\rightarrow$ very important!!!
+    1.  Recall bootstrap?
+        1.  resampling method $\rightarrow$ combine tree methods with bootstrap
+        2.  bagging serves as an alternative to CV to make a valid estimate of the various measures of accuracy/inaccuracy $\rightarrow$ more reliable than CV
+        3.  cost: computation is more intense
+    2.  Bootstrap sample vs. out of bag (OOB) observation
+        1.  bootstrap sample: randomly select from the initial data set and in that process, we select WITH replacement
+        2.  OOB: WITHOUT replacement
+            1.  can be treated as testing or validation set because when we tried to make the prediction for an observation, it wasn't used in the training data
+            2.  it is possible that an observation never shows up in the OOB, but this is less likely as the number of bootstraps increases
+    3.  The bagging algorithm and OOB accuracy metric
+    4.  Predicting new cases
+        1.  get the prediction by averaging the prediction across thousands of bootstrapped samples
+3.  Random Forest
+    1.  Built upon bagging and is more "general"
+        1.  bagging and random selection of predictors $\rightarrow$ random forest
+    2.  The random forest algorithm and OOB accuracy metric
+        1.  trees are grown using different predictors each time
+        2.  at each split/node, we randomly select which m predictors to be considered at that split/node $\rightarrow$ randomly select a subset of these predictors; can be as small as just one, or as many as all of them (but that's just basically bagging)
+        3.  use the grown tree to predict the OOB sample
+        4.  the random selection is done at each step of considering the node/split, not at the beginning
+        5.  advantage over bagging: reduce the correlation from one set of bootstrapped results to the next
+        6.  in each iteration, we only look at the predictions on the OOB observations
+    3.  The importance of the predictors
+    4.  Tuning: m (the number of predictors at each split)
+4.  Boosting
+    1.  Sequential learning: a series of dependent, small (weak) trees
+        1.  building a **sequence** of simple trees (aka it has less leaves/terminal nodes) using the residuals from the previous tree(s)
+    2.  Tuning: number of trees, (maximum) depths or size, and shrinkage
+        1.  more tuning involved $\rightarrow$ how simple do we want the tree? how many layers do we want to have?
+5.  Assessing accuracy 
+    1.  Prediction
+    2.  Accuracy metric: cross-validation vs OOB
+
+# R Notes
+
+## 1 Fitting and Pruning Classification Tree
+
+The `tree` library is used to construct classification and regression trees.
+
+```{r}
+# install.packages("tree")
+library(tree)
+```
+
+### **1.1 The `Carseats` data**
+
+We first use classification trees to analyze the `Carseats` data set in `ISLR2` package. In these data, `Sales` is a continuous variable, and so we begin by recoding it as a binary variable. We use the `ifelse()` function to create a variable, called `High`, which takes on a value of `Yes` if the `Sales` variable exceeds 8, and takes on a value of `No` otherwise.
+
+```{r}
+library(ISLR2)
+names(Carseats)
+```
+
+```{r}
+carseat.data <- Carseats
+carseat.data$High <- factor(ifelse(Carseats$Sales <= 8, "No", "Yes"))
+```
+
+### **1.2 `tree()`function and its output.**
+
+We now use the `tree()` function to fit a classification tree in order to predict `High`using all variables but `Sales`. The syntax of the `tree()` function is quite similar to that of the `lm()` function.
+
+```{r}
+tree.carseats <- tree(High ~ . - Sales, carseat.data)  # All predictors except for Sales
+```
+
+#### **1.2.1 The `summary()` function lists the variables that are used as internal nodes in the tree, the number of terminal nodes, and the (training) error rate.**
+
+```{r}
+summary(tree.carseats)
+```
+
+-   We see that the training error rate is 9%.
+
+-   For classification trees, the deviance reported in the output of `summary()` is given by -2 $\sum_m$ $\sum_k$ $n_{mk}$ log $\hat\\p_{mk}$
+
+    where $n_{mk}$ is the number of observations in the mth terminal node that belong to the kth class.
+
+-   A small deviance indicates a tree that provides a good fit to the (training) data. The *residual mean deviance* reported is simply the deviance divided by \$n-T \$, i.e., (sample size) - (number of terminal nodes}). (In this case, 400-27=373.)
+
+-   **Caution:** The “Residual mean deviance” and “Misclassification error rate” on the training data may be deceptive since they are based on the training data.
+
+#### **1.2.2 Visualize a tree using `plot()` and `text()`function.**
+
+One of the most attractive properties of trees is that they can be graphically displayed. We use the `plot()` function to display the tree structure, and the `text()` function to display the node labels. The argument `pretty = 0` instructs `R` to include the category names for any qualitative predictors, rather than simply displaying a letter for each category.
+
+```{r}
+plot(tree.carseats)
+text(tree.carseats, pretty = 0)
+```
+
+-   The most important indicator of `Sales` appears to be shelving location, since the first branch differentiates `Good` locations from `Bad` and `Medium` locations.
+
+#### **1.2.3 Other details about the tree.**
+
+```{r}
+tree.carseats
+```
+
+In the above table, we can find:
+
+-   The split criterion. E.g. `Price < 92.5`, `Income < 57`, `CompPrice < 110.5`.
+
+-   The number of observations in that branch. E.g, 46 observations at node (4).
+
+-   The overall prediction for the branch (`Yes` or `No`) by majority vote.
+
+-   The fraction of observations in that branch that take on values of `No` and `Yes`(in alphabetical or numerical order). E.g., node (4) has 46 observation: 14 `No` (14/46 = 0.3043), 32 `Yes` (32/46 = 0.6857).
+
+-   For classification tree, the deviance of each branch is calculated by the number of observations in that branch. E.g., for node (4), deviance = -2 \* log(Likelihood) = -2(14log(14/46) +32log(32/46)) = 56.53
+
+-   Terminal nodes (aka. leaves) are marked with `*`.
+
+#### **1.2.4 `predict()` the classes.**
+
+Use the `predict()` function to predict the responsive, given a set of values of the predictors.
+
+-   In the case of a classification tree, the argument `type = "class"` instructs `R`to return the class prediction. Majority vote approach is used, with random draw in case of a tie.
+
+```{r}
+set.seed(2023)
+train <- sample(1:nrow(carseat.data), 200)
+carseat.train <- carseat.data[train, ]
+carseat.test <- carseat.data[-train, ]
+High.test <- carseat.data$High[-train]
+
+traintree.carseats <- tree(High ~ . - Sales, carseat.data, subset = train)
+
+traintree.pred <- predict(traintree.carseats, newdata=carseat.train, type = "class")
+testtree.pred <- predict(traintree.carseats, newdata=carseat.test, type = "class")
+
+table(traintree.pred, carseat.train$High) # Confusion matrix on training data
+```
+
+```{r}
+table(testtree.pred, High.test) # Confusion matrix on testing data
+```
+
+```{r}
+# Classifications rate
+noquote(paste("Misclassfication rate on the TRAINING data:", 
+              mean(traintree.pred != carseat.train$High)))
+```
+
+```{r}
+noquote(paste("Misclassfication rate on the TESTING data:", 
+              mean(testtree.pred != High.test)))
+```
+
+-   Recall the discussion on model accuracy using training data vs. testing data.
+
+-   Recall the discussion on the bias-variance trade-off and the model flexibility.
+
+-   Use cross-validation to prune the tree and determine the optimal tree size.
+
+### **1.3 Pruning the tree**
+
+#### **1.3.1 Determining the tree size using cross-validation**
+
+The function `cv.tree()` performs cross-validation in order to determine the optimal level of tree complexity.
+
+-   Use the argument `FUN = prune.misclass` in order to use the classification error rate to guide the cross-validation and pruning process. If not specified, the default default for the `cv.tree()` function is to use deviance.
+
+-   Cost complexity pruning (textbook, p.332, Expression 8.4) is used in order to select a sequence of trees for consideration.
+
+-   The `cv.tree()` function reports the number of terminal nodes of each tree considered (`size`) as well as the corresponding error rate and the value of the cost-complexity parameter used (`k`, which corresponds to $\alpha$ in (8.4)).
+
+-   Since I use `FUN = prune.misclass` in the following code, despite its name, `dev` in the output corresponds to the number of cross-validation errors.
+
+-   Note the the results from 10-fold CV may vary since the algorithem involves random sampling.
+
+```{r}
+set.seed(2023)
+cv.carseats <- cv.tree(traintree.carseats, FUN = prune.misclass, K=10)
+names(cv.carseats)
+```
+
+```{r}
+cv.carseats
+```
+
+```{r}
+par(mfrow = c(1, 2))
+plot(cv.carseats$size, cv.carseats$dev, type = "b")
+plot(cv.carseats$k, cv.carseats$dev, type = "b")
+```
+
+-   Though the 10-fold CV shows the unpruned tree (with 21 nodes) has the least error classification (68 misclassifications), we can prune the tree to 13 nodes since the tree is much smaller and produces similar number of misclassfications in cross-validation.
+
+#### **1.3.2 Pruning the tree to the optimal size**
+
+We now apply the `prune.misclass()` function in order to prune the tree based on misclassification rate.
+
+```{r}
+prune.carseats <- prune.misclass(traintree.carseats, best = 13)
+plot(prune.carseats)
+text(prune.carseats, pretty = 0)
+```
+
+```{r}
+tree.pred <- predict(prune.carseats, carseat.test, type = "class")
+noquote(paste("Misclassfication rate on the TESTING data using pruned tree:", mean(tree.pred != High.test)))
+```
+
+-   Recall the misclassifcation rate on the testing data using unpruned tree was 27.5%.
+
+-   If we increase the value of `best`, we obtain a larger pruned tree with lower classification accuracy:
+
+```{r}
+prune.carseats <- prune.misclass(traintree.carseats, best = 18)
+tree.pred <- predict(prune.carseats, carseat.test,
+    type = "class")
+noquote(paste("Misclassfication rate on the TESTING data using bigger tree:", mean(tree.pred != High.test)))
+```
+
+## **2 Fitting and Pruning Regression Trees**
+
+### **2.1 Data: Boston housing values**
+
+Here we fit a regression tree to the `Boston`data set in `ISLR2`. We’ll set aside 200 observations as the hold-out testing data. Note that those 200 observations will not be used in cross-validation. They will be treated as the “benchmark” to test the performance of the trees at the end.
+
+```{r}
+set.seed(2023)
+names(Boston)
+```
+
+```{r}
+test <- sample(1:nrow(Boston), 200)
+boston.train <- Boston[-test, ]
+boston.test <- Boston[test, ]
+```
+
+### **2.2 Fitting a regression tree**
+
+```{r}
+tree.boston <- tree(medv ~ ., data=boston.train)
+summary(tree.boston)
+```
+
+Only four of the variables have been used in constructing the tree. In the context of a regression tree, the deviance is simply the sum of squared errors
+
+```{r}
+plot(tree.boston)
+text(tree.boston, pretty = 0)
+```
+
+```{r}
+plot(tree.boston, type = "uniform")
+text(tree.boston, pretty = 0)
+```
+
+-   The variable `lstat` measures the percentage of individuals with *lower* socioeconomic status. The variable `rm` corresponds to the average number of rooms. The tree indicates that larger values of `rm`, or lower values of `lstat`, correspond to more expensive houses.
+
+-   For example, the tree predicts a median house price of \$45,650 for homes in census tracts in which rm $\geq$ 7.437. The tree predicts a median house price of \$35,000 for homes in census tracts in which rm \< 6.853 and lstat \< 4.615.
+
+-   It is worth noting that we could have fit a much bigger tree, by passing `control = tree.control(nobs = length(train), mindev = 0)` into the `tree()` function.
+
+### **2.3 Pruning the tree.**
+
+#### **2.3.1 Determining the tree size using cross-validation**
+
+Now we use the `cv.tree()` function to see whether pruning the tree will improve performance.
+
+```{r}
+set.seed(2023)
+cv.boston <- cv.tree(tree.boston, K=10)
+plot(cv.boston$size, cv.boston$dev, type = "b")
+```
+
+```{r}
+cv.boston
+```
+
+-   In this case, the initial most complex tree with 9 nodes has the smallest deviation by cross-validation.
+
+#### **2.3.2 Pruning the tree to the optimal size**
+
+Use the `prune.tree()` function to prune the tree when needed. (Recall that for classification tree, use `prune.misclass()`.)
+
+```{r}
+prune.boston <- prune.tree(tree.boston, best = 5)
+plot(prune.boston)
+text(prune.boston, pretty = 0)
+```
+
+## **3 Summary of coding difference between regression tree and classification tree.**
+
+The **regression** tree uses the default “deviance” $\sum$ ( $\hat\\Y_i$ - $\hat\\Y_{i}$ )^2^ to measure the model accuracy.
+
+-   Can use the default argument in `cv.tree()`, `predict()`.
+
+-   Use `prune.tree()` for pruning.
+
+The **classification** tree usually use “misclassification rate” as the accuracy metric.
+
+-   Make sure the response variable is a factor.
+
+-   In function `cv.tree()`, set argument `FUN = prune.misclass`.
+
+-   For pruning, use function `prune.misclass()`
+
+-   In function `predict()`, set `type = "class"`
+
+## **4 Bagging and Random Forests**
+
+We will keep using the `Boston` (training) data.
+
+Function `randomForest()` in the `randomForest` package conducts both bagging and random forest.
+
+`randomForest(formula, data =  , mtry =  , ntree =  , ...)`
+
+-   For bagging, set the argument `mtry =` to the number of all predictors for bagging. (Recall that bagging is a special case of a random forest with m = p.)
+
+-   For random forest, by default, the function uses m = p/3 for regression tree, and m = $\sqrt\\p$ for classification tree. You can use argument `mtry =` to choose a different m for random forest. (Recall p is the total number of predictors, m is the number of predictors to be considered at each split.)
+
+-   By default, 500 trees will be used. (Argument `ntree =`)
+
+-   The exact results obtained may depend on the versions of `R`, the version of `randomForest` package, and the random seed.
+
+### **4.1 Bagging**
+
+Recall there are 12 predictors.
+
+```{r}
+# install.packages("randomForest")
+library(randomForest)
+set.seed(2023)
+bag.boston <- randomForest(medv ~ ., data = boston.train,
+                           mtry = 12, importance = TRUE)
+bag.boston
+```
+
+### **4.2 Random Forest**
+
+As an example, I’ll use `mtry = 5`below. By default, at each split, `randomForest()`uses p/3 variables for regression trees, and $\sqrt\\p$ variable for classification trees.
+
+```{r}
+rf.boston <- randomForest(medv ~ ., data = boston.train, mtry = 5,
+                          importance = TRUE)
+rf.boston
+```
+
+### **4.3 Variable importance**
+
+Use the `importance()` and `varImpPlot()` functions to view importance of each variable. For regression tree, we have two measures:
+
+-   `%IncMSE`: averaging over all trees, how much a predictor is associated with reducing the MSE on the out-of-bag samples? Large value indicate important predictor.
+
+-   `IncNodePurity`: averaging over all trees, how much a predictor is associated with reducing the module purity on the training (in-bag) samples? Large value indicate important predictor.
+
+```{r}
+importance(rf.boston)
+```
+
+```{r}
+varImpPlot(rf.boston)
+```
+
+-   The results indicate that across all of the trees considered in the random forest, the wealth of the community (`lstat`) and the house size (`rm`) are by far the two most important variables.
+
+### **4.4 How many trees?**
+
+```{r}
+plot(bag.boston)
+```
+
+```{r}
+plot(rf.boston)
+```
+
+# **5 Boosting**
+
+Function `gbm()` in package `gbm` conducts boosting to regression and classification tree.
+
+```{r}
+install.packages("gbm")
+library(gbm)
+```
+
+-   For regression tree, run `gbm()` with argument `distribution = "gaussian"`.
+
+-   For binary classification tree, use argument `distribution = "bernoulli"`.
+
+-   B: the number of trees is set by argument `n.trees =`. (100 by default.)
+
+-   d: the depth of each tree is limited by argument `interaction.depth =`. (1 by default.)
+
+-   $\lambda$ : the shrinkage parameter is set by `shrinkage =`. (0.1 by default.)
+
+```{r}
+set.seed(2023)
+boost.boston <- gbm(medv ~ ., data = boston.train,
+    distribution = "gaussian", n.trees = 500,
+    interaction.depth = 4, shrinkage = 0.1)
+```
+
+The `summary()` function produces a relative influence plot and also outputs the relative influence statistics.
+
+```{r}
+summary(boost.boston)
+```
+
+-   We see that `lstat` and `rm` are by far the most important variables.
+
+The *partial dependence plots* illustrate the marginal effect of the selected variables on the response after *integrating* out the other variables.
+
+```{r}
+plot(boost.boston, i = "rm")
+```
+
+```{r}
+plot(boost.boston, i = "lstat")
+```
+
+-   In this case, as we might expect, median house prices are increasing with `rm`and decreasing with `lstat`.
+
+## **6 The prediction accuracy**
+
+Recall that prediction accuracy should be assessed using either a testing set, or via cross-validation.
+
+So far, we fitted the following 5 models to the `Boston` data:
+
+```{r}
+summary(tree.boston)
+```
+
+```{r}
+summary(prune.boston)
+```
+
+```{r}
+bag.boston
+```
+
+```{r}
+rf.boston
+```
+
+```{r}
+boost.boston
+```
+
+We set aside a testing data set with 200 observations at the beginning. Estimate the MSE using the hold-out testing.
+
+```{r}
+cbind(nrow(Boston), nrow(boston.train), nrow(boston.test))
+```
+
+```{r}
+tree.pred <- predict(tree.boston, newdata=boston.test)
+tree.mse <- mean((boston.test$medv - tree.pred)^2)
+
+prune.pred <- predict(prune.boston, newdata=boston.test)
+prune.mse <- mean((boston.test$medv - prune.pred)^2)
+
+bag.pred <- predict(bag.boston, newdata=boston.test)
+bag.mse <- mean((boston.test$medv - bag.pred)^2)
+
+rf.pred <- predict(rf.boston, newdata=boston.test)
+rf.mse <- mean((boston.test$medv - rf.pred)^2)
+
+boost.pred <- predict(boost.boston, newdata=boston.test, n.trees = 500)
+boost.mse <- mean((boston.test$medv - boost.pred)^2)
+
+rbind(tree.mse, prune.mse, bag.mse, rf.mse, boost.mse)
+```
